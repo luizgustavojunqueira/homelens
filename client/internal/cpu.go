@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type CPUInfo struct {
+type CPUTime struct {
 	Name      string
 	User      uint64
 	Nice      uint64
@@ -22,25 +22,17 @@ type CPUInfo struct {
 	GuestNice uint64
 }
 
-func (c CPUInfo) Total() uint64 {
+func (c CPUTime) Total() uint64 {
 	return c.User + c.Nice + c.System + c.Idle + c.IOWait + c.IRQ + c.SoftIRQ + c.Steal
 }
 
-func (c CPUInfo) UsagePercent() float64 {
-	total := c.Total()
-	if total == 0 {
-		return 0
-	}
-	return float64(total-c.Idle) / float64(total) * 100
-}
-
-func readCPUInfo() ([]CPUInfo, error) {
+func readCPUInfo() ([]CPUTime, error) {
 	stat, err := os.ReadFile("/proc/stat")
 	if err != nil {
 		return nil, err
 	}
 
-	var cpus []CPUInfo
+	var cpus []CPUTime
 	scanner := bufio.NewScanner(strings.NewReader(string(stat)))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -48,7 +40,7 @@ func readCPUInfo() ([]CPUInfo, error) {
 			continue
 		}
 
-		var info CPUInfo
+		var info CPUTime
 		fmt.Sscanf(line, "%s %d %d %d %d %d %d %d %d %d %d",
 			&info.Name,
 			&info.User,
@@ -68,7 +60,7 @@ func readCPUInfo() ([]CPUInfo, error) {
 	return cpus, nil
 }
 
-func getCPUUsage(oldSamples []CPUInfo, newSamples []CPUInfo) []float64 {
+func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) []float64 {
 	var results []float64
 	for i, sample := range newSamples {
 
