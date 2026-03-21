@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 type CPUInfo struct {
@@ -69,26 +68,9 @@ func readCPUInfo() ([]CPUInfo, error) {
 	return cpus, nil
 }
 
-func GetCPUUsage() ([]string, error) {
-	var (
-		samples    []CPUInfo
-		oldSamples []CPUInfo
-	)
-
-	oldSamples, err := readCPUInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	time.Sleep(1 * time.Second)
-
-	samples, err = readCPUInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	var results []string
-	for i, sample := range samples {
+func getCPUUsage(oldSamples []CPUInfo, newSamples []CPUInfo) []float64 {
+	var results []float64
+	for i, sample := range newSamples {
 
 		totalDelta := sample.Total() - oldSamples[i].Total()
 		idleDelta := sample.Idle - oldSamples[i].Idle
@@ -96,9 +78,21 @@ func GetCPUUsage() ([]string, error) {
 		if totalDelta > 0 {
 
 			usage := float64(totalDelta-idleDelta) / float64(totalDelta) * 100
-			results = append(results, fmt.Sprintf("%s: %.2f%%", sample.Name, usage))
+			results = append(results, usage)
 		}
 	}
 
-	return results, nil
+	return results
+}
+
+func getCPUAvg(usages []float64) float64 {
+	if len(usages) == 0 {
+		return 0
+	}
+
+	var sum float64
+	for _, usage := range usages {
+		sum += usage
+	}
+	return sum / float64(len(usages))
 }
