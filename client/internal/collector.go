@@ -10,6 +10,8 @@ type SystemInfo struct {
 	Memory      MemoryUsage   `json:"memory"`
 	DiskSpace   DiskSpace     `json:"disk_space"`
 	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
+	NetUsage    []NetUsage    `json:"net_usage"`
+	Temperature []TempInfo    `json:"temperature"`
 }
 
 func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo) (SystemInfo, error) {
@@ -18,6 +20,7 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 
 	var prevCPUTime []CPUTime
 	var prevDiskIO []DiskIO
+	var prevNetInfo []NetInfo
 
 	for {
 		select {
@@ -35,6 +38,11 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 				return SystemInfo{}, err
 			}
 
+			currentNetInfo, err := readNetInfo()
+			if err != nil {
+				return SystemInfo{}, err
+			}
+
 			if prevCPUTime == nil {
 				prevCPUTime = currentCPUTime
 				continue
@@ -45,10 +53,16 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 				continue
 			}
 
+			if prevNetInfo == nil {
+				prevNetInfo = currentNetInfo
+				continue
+			}
+
 			sysInfo := SystemInfo{}
 
 			sysInfo.CPUUsage = getCPUUsage(prevCPUTime, currentCPUTime)
 			sysInfo.DiskIOUsage = calcDiskIOUsage(prevDiskIO, currentDiskIO, interval)
+			sysInfo.NetUsage = calcNetUsage(prevNetInfo, currentNetInfo, interval)
 
 			sysInfo.Memory, err = readMemoryUsage()
 			if err != nil {
@@ -60,8 +74,14 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 				return SystemInfo{}, err
 			}
 
+			sysInfo.Temperature, err = readTempInfo()
+			if err != nil {
+				return SystemInfo{}, err
+			}
+
 			prevCPUTime = currentCPUTime
 			prevDiskIO = currentDiskIO
+			prevNetInfo = currentNetInfo
 
 			out <- sysInfo
 		}
