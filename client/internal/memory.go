@@ -33,6 +33,6 @@ func readMemoryUsage() (MemoryUsage, error) {
 	return memInfo, nil
 }
 
-func ConvertKBToMB(kb uint64) float64 {
-	return float64(kb) / 1024
+func ConvertKBToGB(kb uint64) float64 {
+	return float64(kb) / (1024 * 1024)
 }

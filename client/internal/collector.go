@@ -12,8 +12,9 @@ type CPUInfo struct {
 }
 
 type SystemInfo struct {
-	CPUInfo CPUInfo
-	Memory  MemoryUsage
+	CPUInfo   CPUInfo
+	Memory    MemoryUsage
+	DiskSpace DiskSpace
 }
 
 func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo) (SystemInfo, error) {
@@ -49,6 +50,11 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 			prevCPUInfo = currentCPUInfo
 
 			sysInfo.Memory, err = readMemoryUsage()
+			if err != nil {
+				return SystemInfo{}, err
+			}
+
+			sysInfo.DiskSpace, err = readDiskSpace("/")
 			if err != nil {
 				return SystemInfo{}, err
 			}

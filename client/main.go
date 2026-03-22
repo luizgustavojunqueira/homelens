@@ -26,7 +26,10 @@ func main() {
 		for i, cpuUsage := range sysInfo.CPUInfo.UsagePercent {
 			fmt.Printf("CPU %s Usage: %.2f%%\n", sysInfo.CPUInfo.Name[i], cpuUsage)
 		}
-		fmt.Printf("Memory: Total: %f mB, Available: %f mB\n", internal.ConvertKBToMB(sysInfo.Memory.Total), internal.ConvertKBToMB(sysInfo.Memory.Available))
+		fmt.Printf("Memory: Total: %f GB, Available: %f GB\n", internal.ConvertKBToGB(sysInfo.Memory.Total), internal.ConvertKBToGB(sysInfo.Memory.Available))
+
+		fmt.Printf("Disk: Path: %s, Total: %f GB, Available: %f GB, Usage: %.2f%%\n", sysInfo.DiskSpace.Path, internal.ConvertBytesToGB(sysInfo.DiskSpace.Total), internal.ConvertBytesToGB(sysInfo.DiskSpace.Available), sysInfo.DiskSpace.UsagePercent())
+
 	}
 
 	cancel()
