@@ -6,9 +6,10 @@ import (
 )
 
 type SystemInfo struct {
-	CPUInfo   CPUInfo     `json:"cpu_info"`
-	Memory    MemoryUsage `json:"memory"`
-	DiskSpace DiskSpace   `json:"disk_space"`
+	CPUInfo     CPUInfo       `json:"cpu_info"`
+	Memory      MemoryUsage   `json:"memory"`
+	DiskSpace   DiskSpace     `json:"disk_space"`
+	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
 }
 
 func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo) (SystemInfo, error) {
@@ -16,6 +17,7 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 	defer ticker.Stop()
 
 	var prevCPUTime []CPUTime
+	var prevDiskIO []DiskIO
 
 	for {
 		select {
@@ -28,8 +30,18 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 				return SystemInfo{}, err
 			}
 
+			currentDiskIO, err := readDiskIO()
+			if err != nil {
+				return SystemInfo{}, err
+			}
+
 			if prevCPUTime == nil {
 				prevCPUTime = currentCPUTime
+				continue
+			}
+
+			if prevDiskIO == nil {
+				prevDiskIO = currentDiskIO
 				continue
 			}
 
@@ -42,6 +54,8 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 			sysInfo.CPUInfo.UsagePercent = getCPUUsage(prevCPUTime, currentCPUTime)
 			sysInfo.CPUInfo.CPUAvg = getCPUAvg(sysInfo.CPUInfo.UsagePercent)
 			prevCPUTime = currentCPUTime
+
+			sysInfo.DiskIOUsage = calcDiskIOUsage(prevDiskIO, currentDiskIO, interval)
 
 			sysInfo.Memory, err = readMemoryUsage()
 			if err != nil {
