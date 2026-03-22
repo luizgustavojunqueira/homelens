@@ -29,8 +29,19 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("System Info: %s\n", string(data))
+		var prettyJSON map[string]any
+		if err := json.Unmarshal(data, &prettyJSON); err != nil {
+			fmt.Printf("Error unmarshaling system info: %v\n", err)
+			continue
+		}
 
+		prettyData, err := json.MarshalIndent(prettyJSON, "", "  ")
+		if err != nil {
+			fmt.Printf("Error marshaling pretty JSON: %v\n", err)
+			continue
+		}
+
+		fmt.Println(string(prettyData))
 	}
 
 	cancel()

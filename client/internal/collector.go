@@ -6,7 +6,7 @@ import (
 )
 
 type SystemInfo struct {
-	CPUInfo     CPUInfo       `json:"cpu_info"`
+	CPUUsage    CPUUsage      `json:"cpu_usage"`
 	Memory      MemoryUsage   `json:"memory"`
 	DiskSpace   DiskSpace     `json:"disk_space"`
 	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
@@ -47,14 +47,7 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 
 			sysInfo := SystemInfo{}
 
-			sysInfo.CPUInfo.Name = make([]string, len(currentCPUTime))
-			for i, cpu := range currentCPUTime {
-				sysInfo.CPUInfo.Name[i] = cpu.Name
-			}
-			sysInfo.CPUInfo.UsagePercent = getCPUUsage(prevCPUTime, currentCPUTime)
-			sysInfo.CPUInfo.CPUAvg = getCPUAvg(sysInfo.CPUInfo.UsagePercent)
-			prevCPUTime = currentCPUTime
-
+			sysInfo.CPUUsage = getCPUUsage(prevCPUTime, currentCPUTime)
 			sysInfo.DiskIOUsage = calcDiskIOUsage(prevDiskIO, currentDiskIO, interval)
 
 			sysInfo.Memory, err = readMemoryUsage()
@@ -66,6 +59,9 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 			if err != nil {
 				return SystemInfo{}, err
 			}
+
+			prevCPUTime = currentCPUTime
+			prevDiskIO = currentDiskIO
 
 			out <- sysInfo
 		}

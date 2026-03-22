@@ -8,10 +8,14 @@ import (
 	"strings"
 )
 
+type CPUUsage struct {
+	CPUInfo []CPUInfo `json:"cpu_info"`
+	CPUAvg  float64   `json:"cpu_avg"`
+}
+
 type CPUInfo struct {
-	Name         []string  `json:"name"`
-	UsagePercent []float64 `json:"usage_percent"`
-	CPUAvg       float64   `json:"cpu_avg"`
+	Name         string  `json:"name"`
+	UsagePercent float64 `json:"usage_percent"`
 }
 
 type CPUTime struct {
@@ -66,31 +70,29 @@ func readCPUTime() ([]CPUTime, error) {
 	return cpus, nil
 }
 
-func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) []float64 {
-	var results []float64
+func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) CPUUsage {
+	var cpuInfos []CPUInfo
 	for i, sample := range newSamples {
 
-		totalDelta := sample.Total() - oldSamples[i].Total()
-		idleDelta := sample.Idle - oldSamples[i].Idle
+		prev := oldSamples[i]
 
-		if totalDelta > 0 {
+		idle := sample.Idle - prev.Idle
+		total := sample.Total() - prev.Total()
 
-			usage := float64(totalDelta-idleDelta) / float64(totalDelta) * 100
-			results = append(results, usage)
-		}
+		cpuInfos = append(cpuInfos, CPUInfo{
+			Name:         sample.Name,
+			UsagePercent: (1.0 - float64(idle)/float64(total)) * 100,
+		})
 	}
 
-	return results
-}
+	sum := 0.0
 
-func getCPUAvg(usages []float64) float64 {
-	if len(usages) == 0 {
-		return 0
+	for _, info := range cpuInfos {
+		sum += info.UsagePercent
 	}
 
-	var sum float64
-	for _, usage := range usages {
-		sum += usage
+	return CPUUsage{
+		CPUInfo: cpuInfos,
+		CPUAvg:  sum / float64(len(cpuInfos)),
 	}
-	return sum / float64(len(usages))
 }
