@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -22,13 +23,13 @@ func main() {
 
 	fmt.Println("Collecting CPU usage data. Press Ctrl+C to stop.")
 	for sysInfo := range out {
-		fmt.Println("CPU Average: ", sysInfo.CPUInfo.CPUAvg)
-		for i, cpuUsage := range sysInfo.CPUInfo.UsagePercent {
-			fmt.Printf("CPU %s Usage: %.2f%%\n", sysInfo.CPUInfo.Name[i], cpuUsage)
+		data, err := json.Marshal(sysInfo)
+		if err != nil {
+			fmt.Printf("Error marshaling system info: %v\n", err)
+			continue
 		}
-		fmt.Printf("Memory: Total: %f GB, Available: %f GB\n", internal.ConvertKBToGB(sysInfo.Memory.Total), internal.ConvertKBToGB(sysInfo.Memory.Available))
 
-		fmt.Printf("Disk: Path: %s, Total: %f GB, Available: %f GB, Usage: %.2f%%\n", sysInfo.DiskSpace.Path, internal.ConvertBytesToGB(sysInfo.DiskSpace.Total), internal.ConvertBytesToGB(sysInfo.DiskSpace.Available), sysInfo.DiskSpace.UsagePercent())
+		fmt.Printf("System Info: %s\n", string(data))
 
 	}
 

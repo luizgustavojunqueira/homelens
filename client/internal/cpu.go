@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+type CPUInfo struct {
+	Name         []string  `json:"name"`
+	UsagePercent []float64 `json:"usage_percent"`
+	CPUAvg       float64   `json:"cpu_avg"`
+}
+
 type CPUTime struct {
 	Name      string
 	User      uint64
@@ -26,7 +32,7 @@ func (c CPUTime) Total() uint64 {
 	return c.User + c.Nice + c.System + c.Idle + c.IOWait + c.IRQ + c.SoftIRQ + c.Steal
 }
 
-func readCPUInfo() ([]CPUTime, error) {
+func readCPUTime() ([]CPUTime, error) {
 	stat, err := os.ReadFile("/proc/stat")
 	if err != nil {
 		return nil, err

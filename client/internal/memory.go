@@ -8,8 +8,9 @@ import (
 )
 
 type MemoryUsage struct {
-	Total     uint64
-	Available uint64
+	Total     uint64 `json:"total"`
+	Available uint64 `json:"available"`
+	Used      uint64 `json:"used"`
 }
 
 func readMemoryUsage() (MemoryUsage, error) {
@@ -27,6 +28,10 @@ func readMemoryUsage() (MemoryUsage, error) {
 			fmt.Sscanf(line, "MemTotal: %d kB", &memInfo.Total)
 		} else if strings.HasPrefix(line, "MemAvailable:") {
 			fmt.Sscanf(line, "MemAvailable: %d kB", &memInfo.Available)
+		}
+
+		if memInfo.Total != 0 && memInfo.Available != 0 {
+			memInfo.Used = memInfo.Total - memInfo.Available
 		}
 	}
 
