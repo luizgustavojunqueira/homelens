@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -47,6 +48,8 @@ func readDiskSpace(path string) (DiskSpace, error) {
 	}, nil
 }
 
+var wholeDiskRe = regexp.MustCompile(`^(nvme\d+n\d+|sd[a-z]+)$`)
+
 func readDiskIO() ([]DiskIO, error) {
 	data, err := os.ReadFile("/proc/diskstats")
 	if err != nil {
@@ -62,7 +65,7 @@ func readDiskIO() ([]DiskIO, error) {
 		}
 
 		name := fields[2]
-		if strings.HasPrefix(name, "loop") || strings.HasPrefix(name, "ram") {
+		if !wholeDiskRe.MatchString(name) {
 			continue
 		}
 
