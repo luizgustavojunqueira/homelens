@@ -1,22 +1,13 @@
-// Package internal
-package internal
+package client
 
 import (
 	"bufio"
 	"fmt"
 	"os"
 	"strings"
+
+	"homelens/shared"
 )
-
-type CPUUsage struct {
-	CPUInfo []CPUInfo `json:"cpu_info"`
-	CPUAvg  float64   `json:"cpu_avg"`
-}
-
-type CPUInfo struct {
-	Name         string  `json:"name"`
-	UsagePercent float64 `json:"usage_percent"`
-}
 
 type CPUTime struct {
 	Name      string
@@ -70,8 +61,8 @@ func readCPUTime() ([]CPUTime, error) {
 	return cpus, nil
 }
 
-func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) CPUUsage {
-	var cpuInfos []CPUInfo
+func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) shared.CPUUsage {
+	var cpuInfos []shared.CPUInfo
 	for i, sample := range newSamples {
 
 		prev := oldSamples[i]
@@ -79,7 +70,7 @@ func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) CPUUsage {
 		idle := sample.Idle - prev.Idle
 		total := sample.Total() - prev.Total()
 
-		cpuInfos = append(cpuInfos, CPUInfo{
+		cpuInfos = append(cpuInfos, shared.CPUInfo{
 			Name:         sample.Name,
 			UsagePercent: (1.0 - float64(idle)/float64(total)) * 100,
 		})
@@ -91,7 +82,7 @@ func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) CPUUsage {
 		sum += info.UsagePercent
 	}
 
-	return CPUUsage{
+	return shared.CPUUsage{
 		CPUInfo: cpuInfos,
 		CPUAvg:  sum / float64(len(cpuInfos)),
 	}

@@ -1,4 +1,4 @@
-package internal
+package client
 
 import (
 	"bufio"
@@ -6,18 +6,14 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"homelens/shared"
 )
 
 type NetInfo struct {
 	Name    string `json:"name"`
 	RxBytes uint64 `json:"rx_bytes"`
 	TxBytes uint64 `json:"tx_bytes"`
-}
-
-type NetUsage struct {
-	Name  string  `json:"name"`
-	RxBps float64 `json:"rx_bps"`
-	TxBps float64 `json:"tx_bps"`
 }
 
 func readNetInfo() ([]NetInfo, error) {
@@ -56,15 +52,15 @@ func readNetInfo() ([]NetInfo, error) {
 	return nets, nil
 }
 
-func calcNetUsage(prev, curr []NetInfo, interval time.Duration) []NetUsage {
+func calcNetUsage(prev, curr []NetInfo, interval time.Duration) []shared.NetUsage {
 	secs := interval.Seconds()
 
-	var netUsages []NetUsage
+	var netUsages []shared.NetUsage
 
 	for i, c := range curr {
 		p := prev[i]
 
-		netUsages = append(netUsages, NetUsage{
+		netUsages = append(netUsages, shared.NetUsage{
 			Name:  c.Name,
 			RxBps: float64(c.RxBytes-p.RxBytes) / secs,
 			TxBps: float64(c.TxBytes-p.TxBytes) / secs,

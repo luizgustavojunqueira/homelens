@@ -1,20 +1,13 @@
-package internal
+package client
 
 import (
 	"context"
 	"time"
+
+	"homelens/shared"
 )
 
-type SystemInfo struct {
-	CPUUsage    CPUUsage      `json:"cpu_usage"`
-	Memory      MemoryUsage   `json:"memory"`
-	DiskSpace   DiskSpace     `json:"disk_space"`
-	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
-	NetUsage    []NetUsage    `json:"net_usage"`
-	Temperature []TempInfo    `json:"temperature"`
-}
-
-func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo) (SystemInfo, error) {
+func Collect(ctx context.Context, interval time.Duration, out chan<- shared.SystemInfo) (shared.SystemInfo, error) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -25,22 +18,22 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 	for {
 		select {
 		case <-ctx.Done():
-			return SystemInfo{}, ctx.Err()
+			return shared.SystemInfo{}, ctx.Err()
 
 		case <-ticker.C:
 			currentCPUTime, err := readCPUTime()
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			currentDiskIO, err := readDiskIO()
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			currentNetInfo, err := readNetInfo()
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			if prevCPUTime == nil {
@@ -58,7 +51,7 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 				continue
 			}
 
-			sysInfo := SystemInfo{}
+			sysInfo := shared.SystemInfo{}
 
 			sysInfo.CPUUsage = getCPUUsage(prevCPUTime, currentCPUTime)
 			sysInfo.DiskIOUsage = calcDiskIOUsage(prevDiskIO, currentDiskIO, interval)
@@ -66,17 +59,17 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- SystemInfo)
 
 			sysInfo.Memory, err = readMemoryUsage()
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			sysInfo.DiskSpace, err = readDiskSpace("/")
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			sysInfo.Temperature, err = readTempInfo()
 			if err != nil {
-				return SystemInfo{}, err
+				return shared.SystemInfo{}, err
 			}
 
 			prevCPUTime = currentCPUTime

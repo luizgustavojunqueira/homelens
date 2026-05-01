@@ -1,20 +1,16 @@
-package internal
+package client
 
 import (
 	"bufio"
 	"fmt"
 	"os"
 	"strings"
+
+	"homelens/shared"
 )
 
-type MemoryUsage struct {
-	Total     uint64 `json:"total"`
-	Available uint64 `json:"available"`
-	Used      uint64 `json:"used"`
-}
-
-func readMemoryUsage() (MemoryUsage, error) {
-	memInfo := MemoryUsage{}
+func readMemoryUsage() (shared.MemoryUsage, error) {
+	memInfo := shared.MemoryUsage{}
 
 	stat, err := os.ReadFile("/proc/meminfo")
 	if err != nil {

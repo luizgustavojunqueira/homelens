@@ -1,4 +1,4 @@
-package internal
+package client
 
 import (
 	"bufio"
@@ -8,15 +8,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
-)
 
-type DiskSpace struct {
-	Path         string  `json:"path"`
-	Total        uint64  `json:"total"`
-	Available    uint64  `json:"available"`
-	Used         uint64  `json:"used"`
-	UsagePercent float64 `json:"usage_percent"`
-}
+	"homelens/shared"
+)
 
 type DiskIO struct {
 	Name           string `json:"name"`
@@ -25,21 +19,14 @@ type DiskIO struct {
 	IOMs           uint64 `json:"io_ms"`
 }
 
-type DiskIOUsage struct {
-	Name      string  `json:"name"`
-	ReadMBps  float64 `json:"read_mbps"`
-	WriteMBps float64 `json:"write_mbps"`
-	IOPercent float64 `json:"io_percent"`
-}
-
-func readDiskSpace(path string) (DiskSpace, error) {
+func readDiskSpace(path string) (shared.DiskSpace, error) {
 	var stat syscall.Statfs_t
 
 	if err := syscall.Statfs(path, &stat); err != nil {
-		return DiskSpace{}, err
+		return shared.DiskSpace{}, err
 	}
 
-	return DiskSpace{
+	return shared.DiskSpace{
 		Path:         path,
 		Total:        stat.Blocks * uint64(stat.Bsize),
 		Available:    stat.Bavail * uint64(stat.Bsize),
@@ -81,14 +68,14 @@ func readDiskIO() ([]DiskIO, error) {
 	return diskIOs, nil
 }
 
-func calcDiskIOUsage(prev, current []DiskIO, interval time.Duration) []DiskIOUsage {
+func calcDiskIOUsage(prev, current []DiskIO, interval time.Duration) []shared.DiskIOUsage {
 	secs := interval.Seconds()
-	var results []DiskIOUsage
+	var results []shared.DiskIOUsage
 
 	for i, c := range current {
 		p := prev[i]
 
-		results = append(results, DiskIOUsage{
+		results = append(results, shared.DiskIOUsage{
 			Name:      c.Name,
 			ReadMBps:  float64(c.SectorsRead-p.SectorsRead) * 512 / (1024 * 1024) / secs,
 			WriteMBps: float64(c.SectorsWritten-p.SectorsWritten) * 512 / (1024 * 1024) / secs,

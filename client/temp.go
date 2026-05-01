@@ -1,23 +1,20 @@
-package internal
+package client
 
 import (
 	"fmt"
 	"os"
 	"strings"
+
+	"homelens/shared"
 )
 
-type TempInfo struct {
-	Zone string  `json:"zone"`
-	Temp float64 `json:"temp_c"`
-}
-
-func readTempInfo() ([]TempInfo, error) {
+func readTempInfo() ([]shared.TempInfo, error) {
 	entries, err := os.ReadDir("/sys/class/thermal")
 	if err != nil {
 		return nil, err
 	}
 
-	var temps []TempInfo
+	var temps []shared.TempInfo
 
 	for _, e := range entries {
 		if !strings.HasPrefix(e.Name(), "thermal_zone") {
@@ -31,7 +28,7 @@ func readTempInfo() ([]TempInfo, error) {
 
 		var raw uint64
 		fmt.Sscanf(string(data), "%d", &raw)
-		temps = append(temps, TempInfo{
+		temps = append(temps, shared.TempInfo{
 			Zone: e.Name(),
 			Temp: float64(raw) / 1000.0,
 		})
