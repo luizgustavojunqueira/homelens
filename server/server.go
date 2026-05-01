@@ -15,17 +15,32 @@ import (
 type AgentServer struct {
 	agents map[string]*websocket.Conn
 
-	logf func(f string, v ...any)
+	logf  func(f string, v ...any)
+	token string
 }
 
-func NewAgentServer(logf func(f string, v ...any)) *AgentServer {
+func NewAgentServer(logf func(f string, v ...any), token string) *AgentServer {
 	return &AgentServer{
 		agents: make(map[string]*websocket.Conn),
 		logf:   logf,
+		token:  token,
 	}
 }
 
 func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+
+	if token != as.token {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	agentID := r.URL.Query().Get("agent_id")
+	if agentID == "" {
+		http.Error(w, "Missing agent_id", http.StatusBadRequest)
+		return
+	}
+
 	c, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		as.logf("websocket accept error: %v", err)
@@ -48,9 +63,10 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		fmt.Printf("Received snapshot from agent: %s\n", snapshot.AgentID)
+		fmt.Printf("Received snapshot from agent: %s\n", agentID)
 		fmt.Printf("CPU AVG: %f\n", snapshot.CPUUsage.CPUAvg)
 
+		as.agents[agentID] = c
 	}
 
 	c.Close(websocket.StatusNormalClosure, "")

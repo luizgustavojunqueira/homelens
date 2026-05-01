@@ -1,8 +1,7 @@
-// package shared
+// Package shared
 package shared
 
 type SystemInfo struct {
-	AgentID     string        `json:"agent_id"`
 	CPUUsage    CPUUsage      `json:"cpu_usage"`
 	Memory      MemoryUsage   `json:"memory"`
 	DiskSpace   DiskSpace     `json:"disk_space"`
