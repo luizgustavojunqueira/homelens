@@ -23,10 +23,10 @@ LIMIT 1;
 
 -- name: ListSnapshotsByRange :many
 SELECT * FROM snapshots
-WHERE agent_id = ?
-  AND timestamp >= ?
+WHERE timestamp >= ?
   AND timestamp <= ?
 ORDER BY timestamp ASC;
 
 -- name: DeleteSnapshotsOlderThan :exec
 DELETE FROM snapshots WHERE timestamp < ?;
+

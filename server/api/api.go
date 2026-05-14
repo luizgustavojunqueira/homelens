@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"homelens/server"
 	"homelens/server/db"
+	"homelens/shared"
 )
 
 type API struct {
@@ -42,6 +44,41 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(agentsResult)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
+	snapshots, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
+		Timestamp:   time.Now().Add(-24 * time.Hour),
+		Timestamp_2: time.Now(),
+	})
+	if err != nil {
+		api.logf("ListSnapshotsByRange error: %v", err)
+		http.Error(w, "Failed to list snapshots", http.StatusInternalServerError)
+		return
+	}
+
+	snapshotResult := make([]Snapshot, len(snapshots))
+	for i, snapshot := range snapshots {
+		var data shared.SystemInfo
+		if err = json.Unmarshal([]byte(snapshot.Data), &data); err != nil {
+			api.logf("unmarshal snapshot %d error: %v", snapshot.ID, err)
+			http.Error(w, "Failed to unmarshal snapshot data", http.StatusInternalServerError)
+			return
+		}
+		snapshotResult[i] = Snapshot{
+			ID:        snapshot.ID,
+			AgentID:   snapshot.AgentID,
+			Timestamp: snapshot.Timestamp,
+			Data:      data,
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(GetSnapshotsResponse{Snapshots: snapshotResult})
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -82,11 +83,15 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("Received snapshot from agent: %s\n", agentID)
 		fmt.Printf("CPU AVG: %f\n", snapshot.CPUUsage.CPUAvg)
-
+		data, err := json.Marshal(snapshot)
+		if err != nil {
+			as.logf("failed to marshal snapshot: %v", err)
+			continue
+		}
 		dbSnapshot := db.InsertSnapshotParams{
 			AgentID:   agentID,
 			Timestamp: time.Now(),
-			Data:      fmt.Sprintf("%+v", snapshot),
+			Data:      string(data),
 		}
 
 		dbErr := as.db.InsertSnapshot(ctx, dbSnapshot)

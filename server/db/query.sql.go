@@ -94,20 +94,18 @@ func (q *Queries) ListAgents(ctx context.Context) ([]Agent, error) {
 
 const listSnapshotsByRange = `-- name: ListSnapshotsByRange :many
 SELECT id, agent_id, timestamp, data FROM snapshots
-WHERE agent_id = ?
-  AND timestamp >= ?
+WHERE timestamp >= ?
   AND timestamp <= ?
 ORDER BY timestamp ASC
 `
 
 type ListSnapshotsByRangeParams struct {
-	AgentID     string    `json:"agent_id"`
 	Timestamp   time.Time `json:"timestamp"`
 	Timestamp_2 time.Time `json:"timestamp_2"`
 }
 
 func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]Snapshot, error) {
-	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.AgentID, arg.Timestamp, arg.Timestamp_2)
+	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.Timestamp, arg.Timestamp_2)
 	if err != nil {
 		return nil, err
 	}
