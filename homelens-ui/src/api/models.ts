@@ -14,15 +14,12 @@ export interface Agent {
   name: string;
   last_seen: string;
   online: boolean;
+  latest_snapshot: SnapshotEntry;
 }
 export interface SnapshotEntry {
   timestamp: string;
   data: SystemInfo;
 }
-export interface AgentSnapshots {
-  agent_id: string;
-  snapshots: SnapshotEntry[];
-}
 export interface GetSnapshotsResponse {
-  agents: AgentSnapshots[];
+  snapshots: SnapshotEntry[];
 }

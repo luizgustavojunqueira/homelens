@@ -34,11 +34,29 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 
 	agentsResult := make([]Agent, len(agents))
 	for i, agent := range agents {
+
+		agentLatestSnapshot, err := api.db.GetLatestSnapshot(context.Background(), agent.ID)
+		if err != nil {
+			api.logf("GetLatestSnapshot error: %v", err)
+			http.Error(w, "Failed to get latest snapshot", http.StatusInternalServerError)
+			return
+		}
+
+		var entry SnapshotEntry
+		if err = json.Unmarshal([]byte(agentLatestSnapshot.Data), &entry.Data); err != nil {
+			api.logf("unmarshal snapshot %d error: %v", agentLatestSnapshot.ID, err)
+			http.Error(w, "Failed to unmarshal snapshot", http.StatusInternalServerError)
+			return
+		}
+
+		entry.Timestamp = agentLatestSnapshot.Timestamp.Format(time.RFC3339)
+
 		agentsResult[i] = Agent{
-			ID:       agent.ID,
-			Name:     agent.Name,
-			LastSeen: agent.LastSeen,
-			Online:   api.registry.IsOnline(agent.ID),
+			ID:             agent.ID,
+			Name:           agent.Name,
+			LastSeen:       agent.LastSeen,
+			Online:         api.registry.IsOnline(agent.ID),
+			LatestSnapshot: entry,
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -50,7 +68,10 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
-	snapshots, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
+	agentID := r.PathValue("id")
+
+	rows, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
+		AgentID:     agentID,
 		Timestamp:   time.Now().Add(-24 * time.Hour),
 		Timestamp_2: time.Now(),
 	})
@@ -60,28 +81,20 @@ func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agents := make([]AgentSnapshots, 0, len(snapshots))
-	for _, row := range snapshots {
-		raw, ok := row.Snapshots.(string)
-		if !ok {
-			api.logf("snapshots for agent %s is not a string: %T", row.AgentID, row.Snapshots)
-			http.Error(w, "Failed to process snapshots", http.StatusInternalServerError)
+	entries := make([]SnapshotEntry, 0, len(rows))
+	for _, row := range rows {
+		var entry SnapshotEntry
+		if err = json.Unmarshal([]byte(row.Data), &entry.Data); err != nil {
+			api.logf("unmarshal snapshot %d error: %v", row.ID, err)
+			http.Error(w, "Failed to unmarshal snapshot", http.StatusInternalServerError)
 			return
 		}
-		var entries []SnapshotEntry
-		if err = json.Unmarshal([]byte(raw), &entries); err != nil {
-			api.logf("unmarshal snapshots for agent %s error: %v | raw: %s", row.AgentID, err, raw)
-			http.Error(w, "Failed to unmarshal snapshots", http.StatusInternalServerError)
-			return
-		}
-		agents = append(agents, AgentSnapshots{
-			AgentID:   row.AgentID,
-			Snapshots: entries,
-		})
+		entry.Timestamp = row.Timestamp.Format(time.RFC3339)
+		entries = append(entries, entry)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(GetSnapshotsResponse{Agents: agents})
+	err = json.NewEncoder(w).Encode(GetSnapshotsResponse{Snapshots: entries})
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return

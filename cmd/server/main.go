@@ -68,7 +68,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", agentServer)
 	mux.HandleFunc("/api/agents", api.GetAgents)
-	mux.HandleFunc("/api/snapshots", api.GetSnapshots)
+	mux.HandleFunc("/api/agents/{id}", api.GetSnapshots)
 
 	fmt.Println("Server listening on port 6969")
 	return http.ListenAndServe(addr, corsMiddleware(mux))
