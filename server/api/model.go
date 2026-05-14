@@ -13,13 +13,16 @@ type Agent struct {
 	Online   bool      `json:"online"`
 }
 
-type Snapshot struct {
-	ID        int64             `json:"id"`
-	AgentID   string            `json:"agent_id"`
-	Timestamp time.Time         `json:"timestamp"`
+type SnapshotEntry struct {
+	Timestamp string            `json:"timestamp"`
 	Data      shared.SystemInfo `json:"data"`
 }
 
+type AgentSnapshots struct {
+	AgentID   string          `json:"agent_id"`
+	Snapshots []SnapshotEntry `json:"snapshots"`
+}
+
 type GetSnapshotsResponse struct {
-	Snapshots []Snapshot `json:"snapshots"`
+	Agents []AgentSnapshots `json:"agents"`
 }

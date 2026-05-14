@@ -22,10 +22,18 @@ ORDER BY timestamp DESC
 LIMIT 1;
 
 -- name: ListSnapshotsByRange :many
-SELECT * FROM snapshots
-WHERE timestamp >= ?
-  AND timestamp <= ?
-ORDER BY timestamp ASC;
+SELECT
+    agent_id,
+    json_group_array(
+        json_object(
+            'timestamp', timestamp,
+            'data', json(data)
+        )
+    ) as snapshots
+FROM snapshots
+WHERE timestamp >= ? AND timestamp <= ?
+GROUP BY agent_id
+ORDER BY agent_id;
 
 -- name: DeleteSnapshotsOlderThan :exec
 DELETE FROM snapshots WHERE timestamp < ?;

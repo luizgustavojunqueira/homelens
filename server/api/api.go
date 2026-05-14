@@ -8,7 +8,6 @@ import (
 
 	"homelens/server"
 	"homelens/server/db"
-	"homelens/shared"
 )
 
 type API struct {
@@ -61,24 +60,28 @@ func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snapshotResult := make([]Snapshot, len(snapshots))
-	for i, snapshot := range snapshots {
-		var data shared.SystemInfo
-		if err = json.Unmarshal([]byte(snapshot.Data), &data); err != nil {
-			api.logf("unmarshal snapshot %d error: %v", snapshot.ID, err)
-			http.Error(w, "Failed to unmarshal snapshot data", http.StatusInternalServerError)
+	agents := make([]AgentSnapshots, 0, len(snapshots))
+	for _, row := range snapshots {
+		raw, ok := row.Snapshots.(string)
+		if !ok {
+			api.logf("snapshots for agent %s is not a string: %T", row.AgentID, row.Snapshots)
+			http.Error(w, "Failed to process snapshots", http.StatusInternalServerError)
 			return
 		}
-		snapshotResult[i] = Snapshot{
-			ID:        snapshot.ID,
-			AgentID:   snapshot.AgentID,
-			Timestamp: snapshot.Timestamp,
-			Data:      data,
+		var entries []SnapshotEntry
+		if err = json.Unmarshal([]byte(raw), &entries); err != nil {
+			api.logf("unmarshal snapshots for agent %s error: %v | raw: %s", row.AgentID, err, raw)
+			http.Error(w, "Failed to unmarshal snapshots", http.StatusInternalServerError)
+			return
 		}
+		agents = append(agents, AgentSnapshots{
+			AgentID:   row.AgentID,
+			Snapshots: entries,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(GetSnapshotsResponse{Snapshots: snapshotResult})
+	err = json.NewEncoder(w).Encode(GetSnapshotsResponse{Agents: agents})
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return

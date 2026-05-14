@@ -93,10 +93,18 @@ func (q *Queries) ListAgents(ctx context.Context) ([]Agent, error) {
 }
 
 const listSnapshotsByRange = `-- name: ListSnapshotsByRange :many
-SELECT id, agent_id, timestamp, data FROM snapshots
-WHERE timestamp >= ?
-  AND timestamp <= ?
-ORDER BY timestamp ASC
+SELECT
+    agent_id,
+    json_group_array(
+        json_object(
+            'timestamp', timestamp,
+            'data', json(data)
+        )
+    ) as snapshots
+FROM snapshots
+WHERE timestamp >= ? AND timestamp <= ?
+GROUP BY agent_id
+ORDER BY agent_id
 `
 
 type ListSnapshotsByRangeParams struct {
@@ -104,21 +112,21 @@ type ListSnapshotsByRangeParams struct {
 	Timestamp_2 time.Time `json:"timestamp_2"`
 }
 
-func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]Snapshot, error) {
+type ListSnapshotsByRangeRow struct {
+	AgentID   string      `json:"agent_id"`
+	Snapshots interface{} `json:"snapshots"`
+}
+
+func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]ListSnapshotsByRangeRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.Timestamp, arg.Timestamp_2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Snapshot
+	var items []ListSnapshotsByRangeRow
 	for rows.Next() {
-		var i Snapshot
-		if err := rows.Scan(
-			&i.ID,
-			&i.AgentID,
-			&i.Timestamp,
-			&i.Data,
-		); err != nil {
+		var i ListSnapshotsByRangeRow
+		if err := rows.Scan(&i.AgentID, &i.Snapshots); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
