@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"homelens/server/db"
 	"homelens/shared"
 
 	"github.com/coder/websocket"
@@ -13,17 +14,19 @@ import (
 )
 
 type AgentServer struct {
-	agents map[string]*websocket.Conn
+	registry *AgentRegistry
+	db       *db.Queries
 
 	logf  func(f string, v ...any)
 	token string
 }
 
-func NewAgentServer(logf func(f string, v ...any), token string) *AgentServer {
+func NewAgentServer(logf func(f string, v ...any), token string, registry *AgentRegistry, db *db.Queries) *AgentServer {
 	return &AgentServer{
-		agents: make(map[string]*websocket.Conn),
-		logf:   logf,
-		token:  token,
+		registry: registry,
+		logf:     logf,
+		token:    token,
+		db:       db,
 	}
 }
 
@@ -48,6 +51,19 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.CloseNow()
 
+	as.logf("agent connected: %s", agentID)
+	as.registry.Add(agentID, c)
+	defer as.registry.Remove(agentID)
+
+	err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
+		ID:       agentID,
+		Name:     agentID,
+		LastSeen: time.Now(),
+	})
+	if err != nil {
+		as.logf("failed to upsert agent in database: %v", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*24)
 	defer cancel()
 
@@ -66,7 +82,17 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Received snapshot from agent: %s\n", agentID)
 		fmt.Printf("CPU AVG: %f\n", snapshot.CPUUsage.CPUAvg)
 
-		as.agents[agentID] = c
+		dbSnapshot := db.InsertSnapshotParams{
+			AgentID:   agentID,
+			Timestamp: time.Now(),
+			Data:      fmt.Sprintf("%+v", snapshot),
+		}
+
+		dbErr := as.db.InsertSnapshot(ctx, dbSnapshot)
+
+		if dbErr != nil {
+			as.logf("failed to insert snapshot into database: %v", dbErr)
+		}
 	}
 
 	c.Close(websocket.StatusNormalClosure, "")
