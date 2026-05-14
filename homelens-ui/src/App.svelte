@@ -1,14 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getAgents } from "./api/agents";
-  import type { Agent } from "./api/agents";
-
-  let agents: Agent[] = $state([]);
+  import { agentStore } from "./ws.svelte";
 
   onMount(() => {
-    getAgents().then((res) => {
-      agents = res;
-    });
+    agentStore.connect();
+    return () => {
+      agentStore.disconnect();
+    };
   });
 </script>
 
@@ -16,10 +14,10 @@
   <h1>HomeLens UI</h1>
 
   <ul>
-    {#each agents as agent}
+    {#each Object.values(agentStore.agents) as agent (agent.id)}
       <li>
         {agent.name} - {agent.online ? "Online" : "Offline"} - {agent.last_seen}
-        - {agent.latest_snapshot.data.cpu_usage.cpu_avg}
+        - {agentStore.snapshots[agent.id]?.data?.cpu_usage?.cpu_avg}
       </li>
     {/each}
   </ul>

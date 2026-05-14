@@ -61,15 +61,6 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for {
 
-		err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
-			ID:       agentID,
-			Name:     agentID,
-			LastSeen: time.Now(),
-		})
-		if err != nil {
-			as.logf("failed to upsert agent in database: %v", err)
-		}
-
 		var snapshot shared.SystemInfo
 		err := wsjson.Read(ctx, c, &snapshot)
 		if err != nil {
@@ -79,6 +70,15 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				as.logf("agent connection lost: %v", err)
 			}
 			break
+		}
+
+		err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
+			ID:       agentID,
+			Name:     agentID,
+			LastSeen: time.Now(),
+		})
+		if err != nil {
+			as.logf("failed to upsert agent in database: %v", err)
 		}
 
 		fmt.Printf("Received snapshot from agent: %s\n", agentID)
@@ -98,7 +98,17 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if dbErr != nil {
 			as.logf("failed to insert snapshot into database: %v", dbErr)
+			continue
 		}
+
+		as.registry.Broadcast(shared.SnapshotEvent{
+			AgentID: agentID,
+			Snapshot: shared.SnapshotEntry{
+				Timestamp: time.Now().Format(time.RFC3339),
+				Data:      snapshot,
+			},
+		})
+
 	}
 
 	c.Close(websocket.StatusNormalClosure, "")

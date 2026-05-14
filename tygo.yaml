@@ -1,9 +1,5 @@
 packages:
   - path: "homelens/shared"
-    output_path: "homelens-ui/src/api/types.ts"
-  - path: "homelens/server/api"
     output_path: "homelens-ui/src/api/models.ts"
     type_mappings:
       time.Time: "string"
-      shared.SystemInfo: "SystemInfo"
-    frontmatter: "import type { SystemInfo } from './types';"
