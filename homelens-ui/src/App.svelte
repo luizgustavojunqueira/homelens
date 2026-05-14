@@ -1,24 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { agentStore } from "./ws.svelte";
-
-  onMount(() => {
-    agentStore.connect();
-    return () => {
-      agentStore.disconnect();
-    };
-  });
+  import Dashboard from "./lib/dashboard/dashboard.svelte";
+  import Header from "./lib/header.svelte";
 </script>
 
-<div>
-  <h1>HomeLens UI</h1>
-
-  <ul>
-    {#each Object.values(agentStore.agents) as agent (agent.id)}
-      <li>
-        {agent.name} - {agent.online ? "Online" : "Offline"} - {agent.last_seen}
-        - {agentStore.snapshots[agent.id]?.data?.cpu_usage?.cpu_avg}
-      </li>
-    {/each}
-  </ul>
-</div>
+<main class="w-full h-screen bg-gray-100 flex flex-col">
+  <Header />
+  <Dashboard />
+</main>

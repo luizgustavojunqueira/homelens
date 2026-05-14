@@ -8,13 +8,15 @@ import (
 	"homelens/shared"
 )
 
-func readTempInfo() ([]shared.TempInfo, error) {
+func readTempInfo() (shared.Temp, error) {
 	entries, err := os.ReadDir("/sys/class/thermal")
 	if err != nil {
-		return nil, err
+		return shared.Temp{}, err
 	}
 
 	var temps []shared.TempInfo
+
+	avgTemp := 0.0
 
 	for _, e := range entries {
 		if !strings.HasPrefix(e.Name(), "thermal_zone") {
@@ -32,7 +34,17 @@ func readTempInfo() ([]shared.TempInfo, error) {
 			Zone: e.Name(),
 			Temp: float64(raw) / 1000.0,
 		})
-
+		avgTemp += float64(raw) / 1000.0
 	}
-	return temps, nil
+
+	if len(temps) > 0 {
+		avgTemp /= float64(len(temps))
+	}
+
+	temp := shared.Temp{
+		TempAvg:  avgTemp,
+		TempInfo: temps,
+	}
+
+	return temp, nil
 }

@@ -7,7 +7,7 @@ type SystemInfo struct {
 	DiskSpace   DiskSpace     `json:"disk_space"`
 	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
 	NetUsage    []NetUsage    `json:"net_usage"`
-	Temperature []TempInfo    `json:"temperature"`
+	Temperature Temp          `json:"temperature"`
 }
 
 type CPUUsage struct {
@@ -45,6 +45,11 @@ type NetUsage struct {
 	Name  string  `json:"name"`
 	RxBps float64 `json:"rx_bps"`
 	TxBps float64 `json:"tx_bps"`
+}
+
+type Temp struct {
+	TempAvg  float64    `json:"temp_avg"`
+	TempInfo []TempInfo `json:"temp_info"`
 }
 
 type TempInfo struct {

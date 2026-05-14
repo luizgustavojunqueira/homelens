@@ -34,7 +34,7 @@ export interface SystemInfo {
   disk_space: DiskSpace;
   disk_io_usage: DiskIOUsage[];
   net_usage: NetUsage[];
-  temperature: TempInfo[];
+  temperature: Temp;
 }
 export interface CPUUsage {
   cpu_info: CPUInfo[];
@@ -66,6 +66,10 @@ export interface NetUsage {
   name: string;
   rx_bps: number /* float64 */;
   tx_bps: number /* float64 */;
+}
+export interface Temp {
+  temp_avg: number /* float64 */;
+  temp_info: TempInfo[];
 }
 export interface TempInfo {
   zone: string;
