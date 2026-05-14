@@ -1,18 +1,7 @@
-
 import { client } from './client';
+import type { GetSnapshotsResponse } from './models';
 
-export interface Snapshot {
-  id: number;
-  agentId: string;
-  timestamp: string;
-  data: any
-}
+export type { GetSnapshotsResponse, AgentSnapshots, SnapshotEntry } from './models';
 
-export interface Snapshots {
-  snapshots: Snapshot[];
-}
-
-export const getSnapshots = (): Promise<Snapshots[]> => client.get<Snapshots[]>('/api/snapshots');
-
-
-
+export const getSnapshots = (): Promise<GetSnapshotsResponse> =>
+  client.get<GetSnapshotsResponse>('/api/snapshots');

@@ -1,10 +1,6 @@
 import { client } from './client';
 
-export interface Agent {
-  id: string;
-  name: string;
-  last_seen: string;
-  online: boolean;
-}
+export type { Agent } from './models';
+import type { Agent } from './models';
 
 export const getAgents = (): Promise<Agent[]> => client.get<Agent[]>('/api/agents');
