@@ -7,9 +7,13 @@ import (
 	"os"
 
 	"homelens/server"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
+
 	var token, addr string
 
 	token = os.Getenv("HOMELENS_AUTH_TOKEN")
@@ -18,7 +22,10 @@ func main() {
 	if token == "" || addr == "" {
 		log.Fatal("HOMELENS_AUTH_TOKEN and HOMELENS_SERVER_ADDR environment variables must be set")
 	}
-	agentServer := server.NewAgentServer(log.Printf, token)
+
+	agentRegistry := server.NewAgentRegistry()
+
+	agentServer := server.NewAgentServer(log.Printf, token, agentRegistry)
 
 	http.Handle("/ws", agentServer)
 	fmt.Println("Server listening on port 6969")

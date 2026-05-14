@@ -11,9 +11,13 @@ import (
 
 	"homelens/client"
 	"homelens/shared"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
+
 	var token, agentID, addr string
 
 	token = os.Getenv("HOMELENS_AUTH_TOKEN")
