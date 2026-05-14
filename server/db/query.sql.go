@@ -55,9 +55,9 @@ VALUES (?, ?, ?)
 `
 
 type InsertSnapshotParams struct {
-	AgentID   string
-	Timestamp time.Time
-	Data      string
+	AgentID   string    `json:"agent_id"`
+	Timestamp time.Time `json:"timestamp"`
+	Data      string    `json:"data"`
 }
 
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
@@ -101,9 +101,9 @@ ORDER BY timestamp ASC
 `
 
 type ListSnapshotsByRangeParams struct {
-	AgentID     string
-	Timestamp   time.Time
-	Timestamp_2 time.Time
+	AgentID     string    `json:"agent_id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Timestamp_2 time.Time `json:"timestamp_2"`
 }
 
 func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]Snapshot, error) {
@@ -143,9 +143,9 @@ ON CONFLICT(id) DO UPDATE SET
 `
 
 type UpsertAgentParams struct {
-	ID       string
-	Name     string
-	LastSeen time.Time
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
 func (q *Queries) UpsertAgent(ctx context.Context, arg UpsertAgentParams) error {

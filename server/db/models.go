@@ -9,14 +9,14 @@ import (
 )
 
 type Agent struct {
-	ID       string
-	Name     string
-	LastSeen time.Time
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
 type Snapshot struct {
-	ID        int64
-	AgentID   string
-	Timestamp time.Time
-	Data      string
+	ID        int64     `json:"id"`
+	AgentID   string    `json:"agent_id"`
+	Timestamp time.Time `json:"timestamp"`
+	Data      string    `json:"data"`
 }

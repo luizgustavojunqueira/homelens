@@ -55,19 +55,20 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	as.registry.Add(agentID, c)
 	defer as.registry.Remove(agentID)
 
-	err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
-		ID:       agentID,
-		Name:     agentID,
-		LastSeen: time.Now(),
-	})
-	if err != nil {
-		as.logf("failed to upsert agent in database: %v", err)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*24)
 	defer cancel()
 
 	for {
+
+		err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
+			ID:       agentID,
+			Name:     agentID,
+			LastSeen: time.Now(),
+		})
+		if err != nil {
+			as.logf("failed to upsert agent in database: %v", err)
+		}
+
 		var snapshot shared.SystemInfo
 		err := wsjson.Read(ctx, c, &snapshot)
 		if err != nil {

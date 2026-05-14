@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"homelens/server"
+	"homelens/server/api"
 	"homelens/server/db"
 
 	"github.com/joho/godotenv"
@@ -49,7 +50,10 @@ func run() error {
 
 	agentServer := server.NewAgentServer(log.Printf, token, agentRegistry, queries)
 
+	api := api.NewAPI(log.Printf, agentRegistry, queries)
+
 	http.Handle("/ws", agentServer)
+	http.HandleFunc("/api/agents", api.GetAgents)
 	fmt.Println("Server listening on port 6969")
 	return http.ListenAndServe(addr, nil)
 }
