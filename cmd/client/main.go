@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"homelens/client"
-	"homelens/shared"
 
 	"github.com/joho/godotenv"
 )
@@ -31,27 +29,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	agentClient := client.NewAgentClient(log.Printf, token, agentID)
-	agentClient.Connect(addr) // TODO: Handle connection errors and retries
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	agentClient := client.NewAgentClient(log.Printf, token, agentID, addr)
 
-	out := make(chan shared.SystemInfo)
-	go client.Collect(ctx, time.Second, out)
-
-	for {
-		select {
-		case <-sigChan:
-			fmt.Println("Shutting down...")
-			cancel()
-			agentClient.Disconnect()
-			return
-		case snapshot := <-out:
-			if err := agentClient.SendSnapshot(snapshot); err != nil {
-				fmt.Println("send error:", err)
-				return
-			}
-		}
+	if err := agentClient.Run(ctx, time.Second*5); err != nil {
+		log.Fatalf("agent client error: %v", err)
 	}
 }
