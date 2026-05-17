@@ -3,7 +3,7 @@
   import Header from "./lib/header.svelte";
 </script>
 
-<main class="w-full h-screen bg-gray-100 flex flex-col">
+<main class="relative w-full h-screen flex flex-col overflow-hidden">
   <Header />
   <Dashboard />
 </main>

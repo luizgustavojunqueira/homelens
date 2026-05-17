@@ -1,3 +1,10 @@
-<header class="w-full bg-gray-200 text-black p-4">
-  <h1>HomeLens</h1>
+<script lang="ts"></script>
+
+<header class="px-6 h-12 flex items-center border-b border-(--border)">
+  <div class="flex items-center gap-2.5">
+    <span class="dot"></span>
+    <span class="text-lg font-medium text-(--text) tracking-tight"
+      >homelens</span
+    >
+  </div>
 </header>

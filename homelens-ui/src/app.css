@@ -1,49 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --bg: #0e0f12;
+  --bg-elev: #16181d;
+  --bg-hover: #1d1f25;
+  --border: #2a2d35;
+  --text: #f1f1f3;
+  --text-dim: #a3a5ac;
+  --text-faint: #6b6e76;
 
-  --sans: 'Roboto Mono', ui-monospace, Consolas, monospace;
-  --heading: 'Roboto Mono', ui-monospace, Consolas, monospace;
+  --accent: #7dd87d;
+  --warn: #f0b942;
+  --crit: #ff6b5b;
+
+  --sans: 'Roboto', system-ui, sans-serif;
   --mono: 'Roboto Mono', ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--mono);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  font: 16px/1.45 var(--sans);
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
 }
+
+.tnum { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(125, 216, 125, 0.6);
+  flex-shrink: 0;
+}
+.dot.off {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+
+.bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 500ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 200ms;
+}
+.bar.warn > span { background: var(--warn); }
+.bar.crit > span { background: var(--crit); }
