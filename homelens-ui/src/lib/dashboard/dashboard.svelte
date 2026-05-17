@@ -1,14 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { agentStore } from "../../ws.svelte";
   import AgentCard from "./agentCard.svelte";
-
-  onMount(() => {
-    agentStore.connect();
-    return () => {
-      agentStore.disconnect();
-    };
-  });
 
   const agents = $derived(Object.values(agentStore.agents));
   const onlineCount = $derived(agents.filter((a) => a.online).length);

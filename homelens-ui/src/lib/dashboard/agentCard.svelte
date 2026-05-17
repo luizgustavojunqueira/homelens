@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
   import type { Agent } from "../../api/models";
+  import { router } from "../../router.svelte";
 
   let { id, latest_snapshot, name, online }: Agent = $props();
 
@@ -26,7 +27,7 @@
 
 <button
   class="w-full grid grid-cols-[minmax(180px,1.4fr)_repeat(4,minmax(0,1fr))_24px] items-center gap-6 px-5 py-4 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer"
-  onclick={() => console.log(`Viewing details for agent ${id}`)}
+  onclick={() => router.go(`/agents/${id}`)}
 >
   <div class="flex items-center gap-3 min-w-0">
     <span class="dot {online ? '' : 'off'}"></span>
