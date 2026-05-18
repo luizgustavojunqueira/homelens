@@ -24,7 +24,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-html, body, #app {
+html, body, #root {
   height: 100%;
   margin: 0;
   background: var(--bg);

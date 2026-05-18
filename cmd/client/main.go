@@ -34,7 +34,7 @@ func main() {
 
 	agentClient := client.NewAgentClient(log.Printf, token, agentID, addr)
 
-	if err := agentClient.Run(ctx, time.Second); err != nil {
+	if err := agentClient.Run(ctx, time.Second*60); err != nil {
 		log.Fatalf("agent client error: %v", err)
 	}
 }
