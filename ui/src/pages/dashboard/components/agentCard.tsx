@@ -1,18 +1,9 @@
 import { Icon } from '@iconify/react';
 import { useNavigate } from 'react-router-dom';
 import type { Agent } from '../../../api/models';
-
-function level(pct: number, warn = 70, crit = 90): '' | 'warn' | 'crit' {
-  if (pct >= crit) return 'crit';
-  if (pct >= warn) return 'warn';
-  return '';
-}
-
-function tempLevel(t: number): '' | 'warn' | 'crit' {
-  if (t >= 80) return 'crit';
-  if (t >= 65) return 'warn';
-  return '';
-}
+import Tooltip from '../../../components/tooltip';
+import MetricBar from '../../../components/metricBar';
+import { formatByteStr } from '../../../utils';
 
 export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
   const navigate = useNavigate();
@@ -26,7 +17,7 @@ export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
 
   return (
     <button
-      className="w-full grid grid-cols-[minmax(180px,1.4fr)_repeat(4,minmax(0,1fr))_24px] items-center gap-6 px-5 py-4 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer"
+      className="w-full grid grid-cols-[minmax(180px,1.4fr)_repeat(4,minmax(0,1fr))_24px] items-center gap-6 px-5 py-0 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer min-h-16"
       onClick={() => navigate(`/agents/${id}`)}
     >
       <div className="flex items-center gap-3 min-w-0">
@@ -36,45 +27,63 @@ export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
 
       {snap ? (
         <>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm text-(--text-dim) w-10">CPU</span>
-            <div className={`bar ${level(cpuPct)} flex-1`}>
-              <span style={{ width: `${Math.min(100, cpuPct)}%` }}></span>
-            </div>
-            <span className="tnum text-base text-(--text) w-12 text-right">
-              {cpuPct.toFixed(0)}%
-            </span>
-          </div>
+          <Tooltip
+            content={
+              <div className="text-left min-w-60">
+                <div><strong>Detailed CPU Usage</strong></div>
+                {snap.cpu_usage.cpu_info.map(({ name, usage_percent }) => (
+                  <MetricBar key={name} name={name} value={usage_percent} />
+                ))
+                }
+              </div>
+            }>
+            <MetricBar name={"CPU"} value={cpuPct} />
+          </Tooltip>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm text-(--text-dim) w-10">MEM</span>
-            <div className={`bar ${level(memPct)} flex-1`}>
-              <span style={{ width: `${Math.min(100, memPct)}%` }}></span>
-            </div>
-            <span className="tnum text-base text-(--text) w-12 text-right">
-              {memPct.toFixed(0)}%
-            </span>
-          </div>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm text-(--text-dim) w-10">DSK</span>
-            <div className={`bar ${level(diskPct, 80, 95)} flex-1`}>
-              <span style={{ width: `${Math.min(100, diskPct)}%` }}></span>
-            </div>
-            <span className="tnum text-base text-(--text) w-12 text-right">
-              {diskPct.toFixed(0)}%
-            </span>
-          </div>
+          <Tooltip
+            content={
+              <div className="text-center">
+                <div><strong>Detailed MEM Usage</strong></div>
+                <span>{formatByteStr(snap.memory.used, "KB")} /  {formatByteStr(snap.memory.total, "KB")}</span>
+              </div>
+            }>
+            <MetricBar name={"MEM"} value={memPct} />
+          </Tooltip>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm text-(--text-dim) w-10">TMP</span>
-            <div className={`bar ${tempLevel(temp)} flex-1`}>
-              <span style={{ width: `${Math.min(100, temp)}%` }}></span>
-            </div>
-            <span className="tnum text-base text-(--text) w-12 text-right">
-              {temp.toFixed(0)}°
-            </span>
-          </div>
+
+          <Tooltip
+            content={
+              <div className="text-center">
+                <div><strong>Detailed DISK Usage</strong></div>
+                <span>{formatByteStr(snap.disk_space.used,)} /  {formatByteStr(snap.disk_space.total,)}</span>
+                <hr className="my-2 border-(--border)" />
+                <div className="text-left">
+                  {snap.disk_io_usage.map(({ name, read_mbps, write_mbps }) => (
+                    <div key={name} className="flex flex-col text-sm">
+                      <span>{name}</span>
+                      <span className="text-(--text-dim)">{`R: ${read_mbps.toFixed(2)} MB/s  W: ${write_mbps.toFixed(2)} MB/s`}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            }>
+            <MetricBar name={"DSK"} value={diskPct} />
+          </Tooltip>
+
+
+          <Tooltip
+            content={
+              <div className="text-center min-w-60">
+                <div><strong>Detailed TEMP Usage</strong></div>
+                {snap.temperature.temp_info.map(({ temp_c, zone }) => (
+                  <MetricBar key={zone} name={zone} value={temp_c} isTemp />
+                ))}
+
+              </div>
+            }>
+            <MetricBar name={"TMP"} value={temp} isTemp />
+          </Tooltip>
         </>
       ) : (
         <div className="col-span-4 text-sm text-(--text-faint)">no data</div>

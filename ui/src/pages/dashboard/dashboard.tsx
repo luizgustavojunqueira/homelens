@@ -15,7 +15,7 @@ export function Dashboard() {
         </span>
       </div>
 
-      <div className="border border-(--border) rounded-md overflow-hidden bg-(--bg-elev) divide-y divide-(--border)">
+      <div className="border border-(--border) rounded-md bg-(--bg-elev) divide-y divide-(--border)">
         {agents.map((agent) => (
           <AgentCard key={agent.id} {...agent} />
         ))}
