@@ -4,6 +4,7 @@ interface IMetricBar {
   warn?: number;
   crit?: number;
   isTemp?: boolean;
+  labelWidth?: string;
 }
 
 function level(pct: number, warn: number, crit: number): '' | 'warn' | 'crit' {
@@ -12,10 +13,10 @@ function level(pct: number, warn: number, crit: number): '' | 'warn' | 'crit' {
   return '';
 }
 
-export default function MetricBar({ name, value, warn = 70, crit = 85, isTemp }: IMetricBar) {
+export default function MetricBar({ name, value, warn = 70, crit = 85, isTemp, labelWidth = 'w-fit' }: IMetricBar) {
   return (
     <div className="flex items-center gap-2 min-w-0 h-full">
-      <span className="text-sm text-(--text-dim) w-fit">{name}</span>
+      <span className={`text-sm text-(--text-dim) truncate ${labelWidth}`}>{name}</span>
       <div className={`bar ${level(value, warn, crit)} flex-1`}>
         <span style={{ width: `${Math.min(100, value)}%` }}></span>
       </div>
