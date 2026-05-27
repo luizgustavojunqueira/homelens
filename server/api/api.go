@@ -52,7 +52,7 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		entry.Timestamp = agentLatestSnapshot.Timestamp.Format(time.RFC3339)
+		entry.Timestamp = agentLatestSnapshot.Timestamp.UnixMilli()
 
 		agentsResult[i] = shared.Agent{
 			ID:             agent.ID,
@@ -84,16 +84,12 @@ func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries := make([]shared.SnapshotEntry, 0, len(rows))
+	entries := make([]shared.SnapshotEntryRaw, 0, len(rows))
 	for _, row := range rows {
-		var entry shared.SnapshotEntry
-		if err = json.Unmarshal([]byte(row.Data), &entry.Data); err != nil {
-			api.logf("unmarshal snapshot %d error: %v", row.ID, err)
-			http.Error(w, "Failed to unmarshal snapshot", http.StatusInternalServerError)
-			return
-		}
-		entry.Timestamp = row.Timestamp.Format(time.RFC3339)
-		entries = append(entries, entry)
+		entries = append(entries, shared.SnapshotEntryRaw{
+			Timestamp: row.Timestamp.UnixMilli(),
+			Data:      []byte(row.Data),
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

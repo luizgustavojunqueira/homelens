@@ -1,5 +1,5 @@
 packages:
   - path: "homelens/shared"
-    output_path: "homelens-ui/src/api/models.ts"
+    output_path: "ui/src/api/models.ts"
     type_mappings:
       time.Time: "string"

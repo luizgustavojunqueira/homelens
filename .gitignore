@@ -26,3 +26,4 @@ dist-ssr
 /homelens-ui/.vscode
 /homelens-ui/bun.lock
 /homelens.db
+/homelens.db-journal

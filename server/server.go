@@ -104,7 +104,7 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		as.registry.Broadcast(shared.SnapshotEvent{
 			AgentID: agentID,
 			Snapshot: shared.SnapshotEntry{
-				Timestamp: time.Now().Format(time.RFC3339),
+				Timestamp: time.Now().UnixMilli(),
 				Data:      snapshot,
 			},
 		})

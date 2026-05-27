@@ -1,6 +1,9 @@
 package shared
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Agent struct {
 	ID             string        `json:"id"`
@@ -11,7 +14,7 @@ type Agent struct {
 }
 
 type SnapshotEntry struct {
-	Timestamp string     `json:"timestamp"`
+	Timestamp int64      `json:"timestamp"`
 	Data      SystemInfo `json:"data"`
 }
 
@@ -21,5 +24,10 @@ type SnapshotEvent struct {
 }
 
 type GetSnapshotsResponse struct {
-	Snapshots []SnapshotEntry `json:"snapshots"`
+	Snapshots []SnapshotEntryRaw `json:"snapshots"`
+}
+
+type SnapshotEntryRaw struct {
+	Timestamp int64           `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
 }
