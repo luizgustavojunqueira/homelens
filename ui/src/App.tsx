@@ -1,19 +1,24 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Header } from './components/header';
-import { WebSocketProvider } from './context/websocket';
 import { Dashboard } from './pages/dashboard/dashboard';
+import AgentDetails from './pages/agentDetails/agentDetails';
+import { useEffect } from 'react';
+import { connectWS } from './services/websocket/agentSocket';
 
 function App() {
+  useEffect(() => {
+    connectWS()
+  }, [])
+
   return (
     <BrowserRouter>
-      <WebSocketProvider>
-        <main className="relative w-full h-screen flex flex-col overflow-hidden">
-          <Header />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-          </Routes>
-        </main>
-      </WebSocketProvider>
+      <main className="relative w-full h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/agents/:agentId" element={<AgentDetails />} />
+        </Routes>
+      </main>
     </BrowserRouter>
   );
 }

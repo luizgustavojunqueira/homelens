@@ -1,9 +1,9 @@
-import { useAgents } from '../../context/websocket';
+import { useAgents } from '../../store/agentsStore';
 import { AgentCard } from './components/agentCard';
 
 export function Dashboard() {
-  const agentMap = useAgents();
-  const agents = Object.values(agentMap);
+  const agentsMap = useAgents((state) => state.agents);
+  const agents = Object.values(agentsMap);
   const onlineCount = agents.filter((a) => a.online).length;
 
   return (

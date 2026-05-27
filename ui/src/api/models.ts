@@ -11,7 +11,7 @@ export interface Agent {
   latest_snapshot: SnapshotEntry;
 }
 export interface SnapshotEntry {
-  timestamp: string;
+  timestamp: number /* int64 */;
   data: SystemInfo;
 }
 export interface SnapshotEvent {
@@ -19,7 +19,11 @@ export interface SnapshotEvent {
   snapshot: SnapshotEntry;
 }
 export interface GetSnapshotsResponse {
-  snapshots: SnapshotEntry[];
+  snapshots: SnapshotEntryRaw[];
+}
+export interface SnapshotEntryRaw {
+  timestamp: number /* int64 */;
+  data: any /* json.RawMessage */;
 }
 
 //////////
