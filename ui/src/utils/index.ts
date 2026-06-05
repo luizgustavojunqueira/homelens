@@ -2,14 +2,21 @@
 type Metric = "B" | "KB" | "MB" | "GB" | "TB" | "PB" | "EB" | "ZB" | "YB";
 
 const metrics: Metric[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-export function formatByteStr(bytes: number, currentMetric: Metric = "B"): string {
-  let value = bytes;
-  let metricIndex = metrics.indexOf(currentMetric);
+export function formatByteStr(value: number, currentMetric: Metric = "B"): string {
+
+  if (value === 0) {
+    return `${value.toFixed(2)} ${currentMetric}`;
+  }
+
+  const metricIndex = metrics.indexOf(currentMetric);
 
   const factor = Math.pow(1024, metricIndex);
-  value = bytes / factor;
+  const valueInBytes = value * factor;
 
-  return `${value.toFixed(2)} ${metrics[metricIndex]}`;
+  const newMetricIndex = Math.floor(Math.log(valueInBytes) / Math.log(1024))
+  const newValue = valueInBytes / Math.pow(1024, newMetricIndex)
+
+  return `${newValue.toFixed(2)} ${metrics[newMetricIndex]}`;
 }
 
 export function convertByteToMetric(bytes: number, targetMetric: Metric): number {
@@ -20,3 +27,4 @@ export function convertByteToMetric(bytes: number, targetMetric: Metric): number
   const factor = Math.pow(1024, targetIndex);
   return bytes / factor;
 }
+
