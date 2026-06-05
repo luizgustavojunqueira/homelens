@@ -11,7 +11,7 @@ interface ILine {
 }
 
 const color = (index: number, total: number) =>
-  `hsl(${(index * 360) / Math.max(total, 1)}, 70%, 60%)`;
+  `hsl(${(index * 360) / Math.max(total, 1)}, 65%, 55%)`;
 
 export default function Line({
   timestamps,
@@ -39,7 +39,7 @@ export default function Line({
     ) ?? [];
 
   const option: EChartsOption = {
-    backgroundColor: "#0b1220",
+    backgroundColor: "transparent",
 
     title: {
       text: label,
@@ -68,12 +68,12 @@ export default function Line({
         return [left, y];
       },
 
-      backgroundColor: "#111827",
-      borderColor: "#374151",
+      backgroundColor: "rgba(24,24,27,0.96)",
+      borderColor: "#3f3f46",
       borderWidth: 1,
 
       textStyle: {
-        color: "#e5e7eb",
+        color: "#fafafa",
         fontSize: 12,
       },
 
@@ -190,13 +190,19 @@ export default function Line({
 
       axisLine: {
         lineStyle: {
-          color: "#374151",
+          color: "#3f3f46",
         },
       },
 
       axisLabel: {
-        color: "#94a3b8",
+        color: "#a1a1aa",
       },
+    },
+    grid: {
+      left: 50,
+      right: 20,
+      top: 20,
+      bottom: 50,
     },
 
     yAxis: {
@@ -208,12 +214,12 @@ export default function Line({
 
       splitLine: {
         lineStyle: {
-          color: "#1f2937",
+          color: "rgba(255,255,255,0.06)",
         },
       },
 
       axisLabel: {
-        color: "#94a3b8",
+        color: "#a1a1aa",
       },
     },
 
@@ -231,13 +237,13 @@ export default function Line({
 
         lineStyle: {
           width: 4,
-          color: "#2563eb",
+          color: "#3b82f6",
         },
 
         z: 100,
 
         areaStyle: {
-          color: "rgba(37,99,235,0.15)",
+          color: "rgba(59,130,246,0.12)",
         },
       },
 
@@ -255,7 +261,7 @@ export default function Line({
 
           lineStyle: {
             width: 1,
-            opacity: 0.25,
+            opacity: 0.15,
             color: color(index, secondaryData.length),
           },
 
@@ -275,8 +281,8 @@ export default function Line({
         height: 10,
         bottom: 10,
         borderColor: "transparent",
-        backgroundColor: "#0f172a",
-        fillerColor: "rgba(96,165,250,0.25)",
+        backgroundColor: "rgba(255,255,255,0.04)",
+        fillerColor: "rgba(59,130,246,0.20)",
 
         handleStyle: {
           color: "#60a5fa",
