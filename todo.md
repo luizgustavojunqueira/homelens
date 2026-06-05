@@ -12,49 +12,49 @@
 
 ## 2. Reconnection (Client)
 
-- [ ] Detect server disconnect (write/read error)
-- [ ] Implement reconnect loop with exponential backoff (1s, 2s, 4s, 8s... max 30s)
-- [ ] Reset backoff on successful reconnection
-- [ ] Log reconnection attempts
-- [ ] Continue collecting metrics during disconnect (discard or buffer)
+- [x] Detect server disconnect (write/read error)
+- [x] Implement reconnect loop with exponential backoff (1s, 2s, 4s, 8s... max 30s)
+- [x] Reset backoff on successful reconnection
+- [x] Log reconnection attempts
+- [x] Continue collecting metrics during disconnect (discard or buffer)
 
 ## 3. SQLite (Server)
 
-- [ ] Add SQLite dependency (`modernc.org/sqlite` or `mattn/go-sqlite3`)
-- [ ] Define schema: `agents` table (id, name, last_seen)
-- [ ] Define schema: `snapshots` table (id, agent_id, timestamp, data JSON)
-- [ ] Insert snapshot on receive (throttle: 1 per 10s or 1 per minute for storage)
+- [x] Add SQLite dependency (`modernc.org/sqlite` or `mattn/go-sqlite3`)
+- [x] Define schema: `agents` table (id, name, last_seen)
+- [x] Define schema: `snapshots` table (id, agent_id, timestamp, data JSON)
+- [x] Insert snapshot on receive (throttle: 1 per 10s or 1 per minute for storage)
 - [ ] Data retention: cron/goroutine to delete snapshots older than X days
-- [ ] Upsert agent `last_seen` on each snapshot
+- [x] Upsert agent `last_seen` on each snapshot
 
 ## 4. Server — Agent Management
 
-- [ ] Track connected agents in memory (map of agent ID → connection info)
-- [ ] Remove agent from map on disconnect
-- [ ] Endpoint or method to list all agents with status (online/offline/last_seen)
-- [ ] Store latest snapshot per agent in memory for instant access
+- [x] Track connected agents in memory (map of agent ID → connection info)
+- [x] Remove agent from map on disconnect
+- [x] Endpoint or method to list all agents with status (online/offline/last_seen)
+- [x] Store latest snapshot per agent in memory for instant access
 
 ## 5. REST API (Server)
 
-- [ ] `GET /api/agents` — list all agents with status
+- [x] `GET /api/agents` — list all agents with status
 - [ ] `GET /api/agents/:id` — agent detail with latest snapshot
 - [ ] `GET /api/agents/:id/history?from=&to=` — historical snapshots for graphs
 - [ ] `GET /api/stats/:id` — aggregated metrics (avg CPU, max memory over time range)
 
 ## 6. Frontend WebSocket (Server → Browser)
 
-- [ ] WebSocket endpoint for frontend clients (`/ws/live`)
-- [ ] On agent snapshot received, broadcast to all connected frontend clients
-- [ ] Send initial state (all agents + latest snapshots) on frontend connect
-- [ ] Handle frontend disconnect gracefully
+- [x] WebSocket endpoint for frontend clients (`/ws/live`)
+- [x] On agent snapshot received, broadcast to all connected frontend clients
+- [x] Send initial state (all agents + latest snapshots) on frontend connect
+- [x] Handle frontend disconnect gracefully
 
 ## 7. Frontend (Web UI)
 
-- [ ] Choose framework (plain HTML+JS, React, or Templ for Go templates)
-- [ ] Dashboard page: overview of all agents (name, status, CPU, memory, temp)
+- [x] Choose framework (plain HTML+JS, React, or Templ for Go templates)
+- [x] Dashboard page: overview of all agents (name, status, CPU, memory, temp)
 - [ ] Agent detail page: per-agent graphs (CPU, memory, network, disk over time)
-- [ ] Online/offline indicator per agent
-- [ ] Auto-update via WebSocket (live data)
+- [x] Online/offline indicator per agent
+- [x] Auto-update via WebSocket (live data)
 - [ ] Historical graphs using REST API data
 
 ## 8. Alerts
@@ -78,8 +78,8 @@
 
 - [ ] Multi-path disk space monitoring (not just `/`)
 - [ ] Read thermal zone type from `/sys/class/thermal/thermal_zone*/type` for descriptive labels
-- [ ] Filter disk I/O to whole disks only (skip partitions, loop, zram, dm)
-- [ ] Network interface filtering (skip `lo`, optionally skip zero-traffic interfaces)
+- [x] Filter disk I/O to whole disks only (skip partitions, loop, zram, dm)
+- [x] Network interface filtering (skip `lo`, optionally skip zero-traffic interfaces)
 - [ ] Event log (agent connected, disconnected, alert fired/resolved)
 - [ ] Server config file (YAML/TOML) for alert thresholds, retention period, port, etc.
 - [ ] Agent config file as alternative to env vars
