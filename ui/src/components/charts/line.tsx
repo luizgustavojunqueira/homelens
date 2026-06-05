@@ -1,6 +1,8 @@
 import type { EChartsOption, SeriesOption } from "echarts";
 import ReactECharts from "echarts-for-react";
 
+const MAX_POINTS = 500;
+
 interface ILine {
   timestamps: number[];
   values: number[];
@@ -21,28 +23,22 @@ export default function Line({
   label,
   tooltipItemPrefix = "Series",
 }: ILine) {
-  const data =
-    timestamps?.map((ts, i) => {
-      const date = new Date(ts);
+  const start = Math.max(0, timestamps.length - MAX_POINTS);
 
-      return [date.getTime(), values[i]];
-    }) ?? values.map((v, i) => [i, v]);
+  const recentTimestamps = timestamps.slice(start);
+  const recentValues = values.slice(start);
+
+  const data = recentTimestamps.map((ts, i) => [ts, recentValues[i]]);
 
   const secondaryData =
-    secondaryValues?.map(
-      (values) =>
-        timestamps?.map((ts, i) => {
-          const date = new Date(ts);
-
-          return [date.getTime(), values[i]];
-        }) ?? values.map((v, i) => [i, v]),
+    secondaryValues?.map((series) =>
+      recentTimestamps.map((ts, i) => [ts, series[start + i]]),
     ) ?? [];
 
   const option: EChartsOption = {
     backgroundColor: "transparent",
 
     title: {
-      text: label,
       left: 10,
       top: 10,
       textStyle: {
@@ -81,6 +77,7 @@ export default function Line({
 
       axisPointer: {
         type: "cross",
+        animation: false,
         lineStyle: {
           color: "#374151",
         },
@@ -231,10 +228,6 @@ export default function Line({
 
         data,
 
-        smooth: true,
-
-        showSymbol: false,
-
         lineStyle: {
           width: 4,
           color: "#3b82f6",
@@ -245,6 +238,13 @@ export default function Line({
         areaStyle: {
           color: "rgba(59,130,246,0.12)",
         },
+
+        sampling: "lttb",
+        progressive: 5000,
+        progressiveThreshold: 10000,
+        animation: false,
+        showSymbol: false,
+        smooth: true,
       },
 
       ...secondaryData.map(
@@ -254,10 +254,13 @@ export default function Line({
           type: "line",
 
           data,
-
-          smooth: true,
-
+          silent: true,
+          sampling: "lttb",
+          progressive: 5000,
+          progressiveThreshold: 10000,
+          animation: false,
           showSymbol: false,
+          smooth: true,
 
           lineStyle: {
             width: 1,
