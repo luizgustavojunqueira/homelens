@@ -28,6 +28,7 @@ export default function AgentDetails() {
     .filter((du) => du !== undefined);
   const diskUsedTimestamps = agent?.history.map((snap) => snap.timestamp);
 
+  const currentCpuAvgUsage = agent?.latest_snapshot.data.cpu_usage.cpu_avg ?? 0;
   const cpuAvgHistory = agent?.history
     .map((snap) => snap.data.cpu_usage.cpu_avg)
     .filter((cu) => cu !== undefined);
@@ -39,6 +40,11 @@ export default function AgentDetails() {
         .map((snap) => snap.data.cpu_usage.cpu_info[index].usage_percent)
         .filter((cu) => cu != undefined),
   );
+
+  const currentMemUsed = agent?.latest_snapshot.data.memory.used ?? 0;
+  const currentMemTotal = agent?.latest_snapshot.data.memory.total ?? 0;
+  const currentMemUsage = (currentMemUsed / currentMemTotal) * 100;
+
   return (
     <div className="px-6 py-6 flex-1 overflow-y-auto">
       <h2 className="text-lg font-medium text-(--text) mb-4">{agent?.name}</h2>
@@ -50,6 +56,23 @@ export default function AgentDetails() {
             label="Disk Usage"
             total={formatByteStr(currentDiskTotal)}
             used={formatByteStr(currentDiskUsed)}
+          />
+        </div>
+        <div className="w-full">
+          <DiskGauge
+            value={currentCpuAvgUsage}
+            label="CPU Usage"
+            total={"100 %"}
+            used={`${currentCpuAvgUsage.toFixed(2)}`}
+          />
+        </div>
+
+        <div className="w-full">
+          <DiskGauge
+            value={currentMemUsage}
+            label="RAM Usage"
+            total={formatByteStr(currentMemTotal, "KB")}
+            used={formatByteStr(currentMemUsed, "KB")}
           />
         </div>
 
