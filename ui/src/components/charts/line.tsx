@@ -53,13 +53,7 @@ export default function Line({
 
     tooltip: {
       trigger: "axis",
-      position: (
-        point: number[],
-        _params: any,
-        _dom: HTMLElement,
-        _rect: any,
-        size: any,
-      ) => {
+      position: (point, _params, _dom, _rect, size) => {
         const [x, y] = point;
 
         const tooltipWidth = size.contentSize[0];

@@ -43,8 +43,8 @@ export default function AgentDetails() {
     <div className="px-6 py-6 flex-1 overflow-y-auto">
       <h2 className="text-lg font-medium text-(--text) mb-4">{agent?.name}</h2>
 
-      <div className="mb-6 flex flex-row justify-start gap-6">
-        <div className="w-64">
+      <div className="mb-6 flex flex-row justify- gap-6">
+        <div className="w-full">
           <DiskGauge
             value={currentDiskUsage}
             label="Disk Usage"
@@ -53,7 +53,7 @@ export default function AgentDetails() {
           />
         </div>
 
-        <div className="w-120">
+        <div className="w-full">
           <Line
             values={diskUsedHistory ?? []}
             valueFormatter={(value: number) => `${value.toFixed(2)} GB`}
@@ -62,7 +62,7 @@ export default function AgentDetails() {
           />
         </div>
 
-        <div className="w-120">
+        <div className="w-full">
           <Line
             values={cpuAvgHistory ?? []}
             valueFormatter={(value: number) => `${value.toFixed(2)} %`}
