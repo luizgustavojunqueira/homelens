@@ -114,7 +114,6 @@ export default function Gauge({ value, label, used, total }: IGauge) {
   return (
     <ReactECharts
       option={option}
-      notMerge
       lazyUpdate
       style={{ width: 260, height: 260 }}
     />
