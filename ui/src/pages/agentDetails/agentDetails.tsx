@@ -29,8 +29,12 @@ export default function AgentDetails() {
   const currentDiskUsed = agent.latest_snapshot.data.disk_space.used ?? 0;
   const currentDiskTotal = agent.latest_snapshot.data.disk_space.total ?? 0;
 
-  const diskUsedHistory = getSeries(agent.history, (snap) =>
-    convertByteToMetric(snap.data.disk_space.used, "GB"),
+  const diskTotalIoHistory = getMultiSeries(agent.history, (snap) =>
+    snap.data.disk_io_usage.map((io) => io.read_mbps + io.write_mbps),
+  );
+
+  const diskNames = agent.latest_snapshot.data.disk_io_usage.map(
+    (disk) => disk.name,
   );
 
   const currentCpuAvgUsage = agent.latest_snapshot.data.cpu_usage.cpu_avg ?? 0;
@@ -131,10 +135,19 @@ export default function AgentDetails() {
 
             <div className="h-80 p-2">
               <Line
-                values={diskUsedHistory}
-                valueFormatter={(value) => `${value.toFixed(2)} GB`}
+                values={
+                  diskTotalIoHistory.length > 0
+                    ? diskTotalIoHistory.reduce(
+                        (sum, disk) => disk.map((v, i) => (sum[i] ?? 0) + v),
+                        [] as number[],
+                      )
+                    : []
+                }
+                valueFormatter={(value) => `${value.toFixed(2)} MB/s`}
+                secondaryValues={diskTotalIoHistory}
                 timestamps={timestamps}
-                label="Disk Used (GB)"
+                label="Disk IO (MB/s)"
+                seriesNames={diskNames}
               />
             </div>
           </div>

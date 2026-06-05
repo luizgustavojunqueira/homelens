@@ -10,6 +10,7 @@ interface ILine {
   valueFormatter?: (value: number) => string;
   label: string;
   tooltipItemPrefix?: string;
+  seriesNames?: string[];
 }
 
 const color = (index: number, total: number) =>
@@ -22,6 +23,7 @@ export default function Line({
   valueFormatter = (value: number) => value.toString(),
   label,
   tooltipItemPrefix = "Series",
+  seriesNames,
 }: ILine) {
   const start = Math.max(0, timestamps.length - MAX_POINTS);
 
@@ -249,7 +251,10 @@ export default function Line({
 
       ...secondaryData.map(
         (data, index): SeriesOption => ({
-          name: `${tooltipItemPrefix} ${index + 1}`,
+          name:
+            seriesNames === undefined
+              ? `${tooltipItemPrefix} ${index + 1}`
+              : `${seriesNames[index]}`,
 
           type: "line",
 
