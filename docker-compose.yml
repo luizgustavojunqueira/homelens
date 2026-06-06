@@ -1,0 +1,12 @@
+services:
+  homelens:
+    build: .
+    container_name: homelens-server
+    restart: unless-stopped
+    ports:
+      - "${HOMELENS_PORT:-80}:80"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - HOMELENS_AUTH_TOKEN=${HOMELENS_AUTH_TOKEN}
+      - HOMELENS_SERVER_ADDR=:80

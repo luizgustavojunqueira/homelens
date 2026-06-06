@@ -15,10 +15,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("could not load .env file: ", err)
-	}
+	_ = godotenv.Load()
 
 	var token, agentID, addr, secondsInterval string
 
