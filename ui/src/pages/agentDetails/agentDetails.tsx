@@ -38,10 +38,6 @@ export default function AgentDetails() {
   );
 
   const currentCpuAvgUsage = agent.latest_snapshot.data.cpu_usage.cpu_avg ?? 0;
-  const cpuAvgHistory = getSeries(
-    agent.history,
-    (snap) => snap.data.cpu_usage.cpu_avg,
-  );
   const cpusHistory = getMultiSeries(agent.history, (snap) =>
     snap.data.cpu_usage.cpu_info.map((cpu) => cpu.usage_percent),
   );
@@ -51,6 +47,20 @@ export default function AgentDetails() {
   const currentMemUsage = (currentMemUsed / currentMemTotal) * 100;
   const memUsedHistory = agent.history.map((snap) =>
     convertByteToMetric(snap.data.memory.used, "GB", "KB"),
+  );
+
+  const netRxHistory = getSeries(agent.history, (snap) =>
+    convertByteToMetric(
+      snap.data.net_usage.reduce((sum, net) => sum + net.rx_bps, 0),
+      "MB",
+    ),
+  );
+
+  const netTxHistory = getSeries(agent.history, (snap) =>
+    convertByteToMetric(
+      snap.data.net_usage.reduce((sum, net) => sum + net.tx_bps, 0),
+      "MB",
+    ),
   );
 
   return (
@@ -98,12 +108,17 @@ export default function AgentDetails() {
 
           <div className="h-96 p-2">
             <Line
-              values={cpuAvgHistory}
-              valueFormatter={(value) => `${value.toFixed(2)} %`}
-              secondaryValues={cpusHistory}
+              isTotalAverage={true}
               timestamps={timestamps}
-              label="CPU Average Usage (%)"
-              tooltipItemPrefix="CPU"
+              label="CPU Usage (%)"
+              valueFormatter={(v) => `${v.toFixed(2)} %`}
+              series={[
+                ...cpusHistory.map((cpu, i) => ({
+                  name: `CPU ${i}`,
+                  values: cpu,
+                  subtle: true,
+                })),
+              ]}
             />
           </div>
         </div>
@@ -118,10 +133,15 @@ export default function AgentDetails() {
 
             <div className="h-80 p-2">
               <Line
-                values={memUsedHistory}
                 valueFormatter={(value) => formatByteStr(value, "GB")}
                 timestamps={timestamps}
                 label="RAM Used (GB)"
+                series={[
+                  {
+                    values: memUsedHistory,
+                    name: "RAM",
+                  },
+                ]}
               />
             </div>
           </div>
@@ -135,19 +155,41 @@ export default function AgentDetails() {
 
             <div className="h-80 p-2">
               <Line
-                values={
-                  diskTotalIoHistory.length > 0
-                    ? diskTotalIoHistory.reduce(
-                        (sum, disk) => disk.map((v, i) => (sum[i] ?? 0) + v),
-                        [] as number[],
-                      )
-                    : []
-                }
-                valueFormatter={(value) => `${value.toFixed(2)} MB/s`}
-                secondaryValues={diskTotalIoHistory}
                 timestamps={timestamps}
                 label="Disk IO (MB/s)"
-                seriesNames={diskNames}
+                valueFormatter={(v) => `${v.toFixed(2)} MB/s`}
+                series={diskTotalIoHistory.map((disk, i) => ({
+                  name: diskNames[i],
+                  values: disk,
+                }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
+            <div className="px-4 py-3 border-b border-(--border)">
+              <h3 className="text-sm font-medium text-(--text)">
+                Network Throughput
+              </h3>
+            </div>
+
+            <div className="h-80 p-2">
+              <Line
+                timestamps={timestamps}
+                label="Network Throughput"
+                valueFormatter={(v) => `${v.toFixed(2)} MB/s`}
+                series={[
+                  {
+                    name: "RX",
+                    values: netRxHistory,
+                  },
+                  {
+                    name: "TX",
+                    values: netTxHistory,
+                  },
+                ]}
               />
             </div>
           </div>

@@ -1,56 +1,76 @@
-import type { EChartsOption, SeriesOption } from "echarts";
+import type {
+  EChartsOption,
+  SeriesOption,
+  TooltipComponentFormatterCallbackParams,
+} from "echarts";
 import ReactECharts from "echarts-for-react";
+import type { CallbackDataParams } from "echarts/types/dist/shared";
 
 const MAX_POINTS = 500;
 
+export interface ISeries {
+  name: string;
+  values: number[];
+  subtle?: boolean;
+}
+
 interface ILine {
   timestamps: number[];
-  values: number[];
-  secondaryValues?: number[][];
+  series: ISeries[];
   valueFormatter?: (value: number) => string;
   label: string;
-  tooltipItemPrefix?: string;
-  seriesNames?: string[];
+  isTotalAverage?: boolean;
 }
 
 const color = (index: number, total: number) =>
   `hsl(${(index * 360) / Math.max(total, 1)}, 65%, 55%)`;
 
+function getPointValue(param: CallbackDataParams): number | null {
+  if (!Array.isArray(param.value)) {
+    return null;
+  }
+
+  const value = param.value[1];
+
+  return typeof value === "number" ? value : null;
+}
+
 export default function Line({
   timestamps,
-  values,
-  secondaryValues,
+  series,
   valueFormatter = (value: number) => value.toString(),
   label,
-  tooltipItemPrefix = "Series",
-  seriesNames,
+  isTotalAverage = false,
 }: ILine) {
   const start = Math.max(0, timestamps.length - MAX_POINTS);
 
   const recentTimestamps = timestamps.slice(start);
-  const recentValues = values.slice(start);
 
-  const data = recentTimestamps.map((ts, i) => [ts, recentValues[i]]);
+  const chartSeries = series.map((serie) => ({
+    ...serie,
+    data: recentTimestamps.map((ts, i) => [
+      ts,
+      serie.values[start + i] ?? null,
+    ]),
+  }));
 
-  const secondaryData =
-    secondaryValues?.map((series) =>
-      recentTimestamps.map((ts, i) => [ts, series[start + i]]),
-    ) ?? [];
+  const seriesColors = new Map<string, string>();
+
+  chartSeries.forEach((serie, index) => {
+    const serieColor =
+      index === 0
+        ? "#3b82f6"
+        : color(index - 1, Math.max(chartSeries.length - 1, 1));
+
+    seriesColors.set(serie.name, serieColor);
+  });
 
   const option: EChartsOption = {
     backgroundColor: "transparent",
 
-    title: {
-      left: 10,
-      top: 10,
-      textStyle: {
-        color: "#e5e7eb",
-        fontSize: 14,
-      },
-    },
-
     tooltip: {
       trigger: "axis",
+
       position: (point, _params, _dom, _rect, size) => {
         const [x, y] = point;
 
@@ -80,108 +100,158 @@ export default function Line({
       axisPointer: {
         type: "cross",
         animation: false,
+
         lineStyle: {
           color: "#374151",
         },
       },
 
-      formatter: (params: any) => {
-        if (!params?.length) {
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        if (!Array.isArray(params) || params.length === 0) {
           return "";
         }
 
-        const date = new Date(params[0].axisValue);
+        const first = params[0];
 
-        const average = params.find((p: any) => p.seriesName === "Average");
+        const axisValue =
+          Array.isArray(first.value) && first.value.length > 0
+            ? Number(first.value[0])
+            : Date.now();
 
-        const secondary = params
-          .filter((p: any) => p.seriesName !== "Average")
-          .sort((a: any, b: any) => b.value[1] - a.value[1]);
+        const date = new Date(axisValue);
 
-        const topSecondary = secondary.slice(0, 8);
+        const visibleSeries = params
+          .map((p) => ({
+            param: p,
+            value: getPointValue(p),
+          }))
+          .filter(
+            (
+              item,
+            ): item is {
+              param: CallbackDataParams;
+              value: number;
+            } => item.value !== null,
+          );
 
-        const remaining = secondary.length - topSecondary.length;
+        const ordered = [...visibleSeries].sort((a, b) => b.value - a.value);
+
+        const topSeries = ordered.slice(0, 8);
+        const remaining = ordered.length - topSeries.length;
+
+        const summary =
+          ordered.length > 1
+            ? isTotalAverage
+              ? ordered.reduce((sum, item) => sum + item.value, 0) /
+                ordered.length
+              : ordered.reduce((sum, item) => sum + item.value, 0)
+            : null;
+
+        const summaryLabel = isTotalAverage ? "Average" : "Total";
 
         return `
-          <div style="font-weight:600;margin-bottom:6px">
-            ${label}
-          </div>
+<div style="font-weight:600;margin-bottom:6px">
+  ${label}
+</div>
 
-          <div style="opacity:0.75;margin-bottom:8px">
-            ${date.toLocaleString()}
-          </div>
+<div style="opacity:0.75;margin-bottom:8px">
+  ${date.toLocaleString()}
+</div>
 
-          ${
-            average
-              ? `
-            <div
-              style="
-                display:flex;
-                justify-content:space-between;
-                gap:16px;
-                margin-bottom:8px;
-                font-weight:600;
-                color:#93c5fd;
-              "
-            >
-              <span>Average</span>
-              <span>${valueFormatter(average.value[1])}</span>
-            </div>
-          `
-              : ""
-          }
+${
+  summary !== null
+    ? `
+<div
+  style="
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:${topSeries.length > 0 ? "8px" : "0"};
+    font-weight:600;
+    color:#93c5fd;
+  "
+>
+  <span>${summaryLabel}</span>
+  <span>${valueFormatter(summary)}</span>
+</div>
+`
+    : ""
+}
 
-          ${
-            topSecondary.length > 0
-              ? `
-            <div
-              style="
-                border-top:1px solid #374151;
-                margin-top:6px;
-                padding-top:6px;
-              "
-            >
-              ${topSecondary
-                .map(
-                  (item: any) => `
-                  <div
-                    style="
-                      display:flex;
-                      justify-content:space-between;
-                      gap:16px;
-                      margin-bottom:2px;
-                    "
-                  >
-                    <span style="color:${item.color}">
-                      ${item.marker} ${item.seriesName}
-                    </span>
-                    <span>${valueFormatter(item.value[1])}</span>
-                  </div>
-                `,
-                )
-                .join("")}
+${
+  topSeries.length > 0
+    ? `
+<div
+  style="
+    border-top:1px solid #374151;
+    margin-top:6px;
+    padding-top:6px;
+  "
+>
+  ${topSeries
+    .map(({ param, value }) => {
+      const serieColor = seriesColors.get(param.seriesName ?? "") ?? "#ffffff";
 
-              ${
-                remaining > 0
-                  ? `
-                  <div
-                    style="
-                      margin-top:4px;
-                      opacity:0.65;
-                      font-style:italic;
-                    "
-                  >
-                    +${remaining} more series
-                  </div>
-                `
-                  : ""
-              }
-            </div>
-          `
-              : ""
-          }
-        `;
+      return `
+<div
+  style="
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:2px;
+  "
+>
+<span style="color:${serieColor}">
+  <span
+    style="
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:${serieColor};
+      margin-right:6px;
+      vertical-align:middle;
+    "
+  ></span>
+  ${param.seriesName}
+</span>
+
+  <span>
+    ${valueFormatter(value)}
+  </span>
+</div>
+`;
+    })
+    .join("")}
+
+  ${
+    remaining > 0
+      ? `
+<div
+  style="
+    margin-top:4px;
+    opacity:0.65;
+    font-style:italic;
+  "
+>
+  +${remaining} more series
+</div>
+`
+      : ""
+  }
+</div>
+`
+    : ""
+}
+`;
       },
+    },
+
+    grid: {
+      left: 50,
+      right: 20,
+      top: 20,
+      bottom: 50,
     },
 
     xAxis: {
@@ -196,12 +266,6 @@ export default function Line({
       axisLabel: {
         color: "#a1a1aa",
       },
-    },
-    grid: {
-      left: 50,
-      right: 20,
-      top: 20,
-      bottom: 50,
     },
 
     yAxis: {
@@ -222,63 +286,43 @@ export default function Line({
       },
     },
 
-    series: [
-      {
-        name: "Average",
+    series: chartSeries.map(
+      (serie): SeriesOption => ({
+        name: serie.name,
 
         type: "line",
 
-        data,
+        data: serie.data,
 
-        lineStyle: {
-          width: 4,
-          color: "#3b82f6",
-        },
-
-        z: 100,
-
-        areaStyle: {
-          color: "rgba(59,130,246,0.12)",
-        },
+        connectNulls: false,
 
         sampling: "lttb",
         progressive: 5000,
         progressiveThreshold: 10000,
+
         animation: false,
         showSymbol: false,
+
         smooth: true,
-      },
 
-      ...secondaryData.map(
-        (data, index): SeriesOption => ({
-          name:
-            seriesNames === undefined
-              ? `${tooltipItemPrefix} ${index + 1}`
-              : `${seriesNames[index]}`,
+        silent: !!serie.subtle,
 
-          type: "line",
+        lineStyle: {
+          width: serie.subtle ? 1 : 3,
+          opacity: serie.subtle ? 0.15 : 1,
+          color: seriesColors.get(serie.name),
+        },
 
-          data,
-          silent: true,
-          sampling: "lttb",
-          progressive: 5000,
-          progressiveThreshold: 10000,
-          animation: false,
-          showSymbol: false,
-          smooth: true,
+        areaStyle: serie.subtle
+          ? undefined
+          : {
+              opacity: 0.05,
+              color: seriesColors.get(serie.name),
+            },
 
-          lineStyle: {
-            width: 1,
-            opacity: 0.15,
-            color: color(index, secondaryData.length),
-          },
-
-          z: 1,
-
-          areaStyle: undefined,
-        }),
-      ),
-    ],
+        z: serie.subtle ? 1 : 100,
+      }),
+    ),
 
     dataZoom: [
       {
@@ -286,8 +330,10 @@ export default function Line({
       },
       {
         type: "slider",
+
         height: 10,
         bottom: 10,
+
         borderColor: "transparent",
         backgroundColor: "rgba(255,255,255,0.04)",
         fillerColor: "rgba(59,130,246,0.20)",
