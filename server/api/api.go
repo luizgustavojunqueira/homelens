@@ -4,12 +4,16 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"homelens/server"
 	"homelens/server/db"
 	"homelens/shared"
+	"homelens/ui"
 
 	"github.com/coder/websocket"
 )
@@ -127,4 +131,27 @@ func (api API) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+func (api API) ServeFrontend() http.Handler {
+	strippedFS, err := fs.Sub(ui.Assets, "dist")
+	if err != nil {
+		log.Fatal("erro ao ler o frontend embutido:", err)
+	}
+
+	fileServer := http.FileServer(http.FS(strippedFS))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "."
+		}
+
+		_, err := fs.Stat(strippedFS, path)
+		if err != nil {
+			r.URL.Path = "/"
+		}
+
+		fileServer.ServeHTTP(w, r)
+	})
 }

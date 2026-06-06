@@ -36,7 +36,10 @@ func main() {
 }
 
 func run() error {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		return err
+	}
 
 	var token, addr string
 
@@ -67,10 +70,10 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", agentServer)
+	mux.Handle("/", api.ServeFrontend())
 	mux.HandleFunc("/api/agents", api.GetAgents)
 	mux.HandleFunc("/api/agents/ws", api.HandleWebsocket)
 	mux.HandleFunc("/api/agents/{id}", api.GetSnapshots)
 
-	fmt.Println("Server listening on port 6969")
 	return http.ListenAndServe(addr, corsMiddleware(mux))
 }

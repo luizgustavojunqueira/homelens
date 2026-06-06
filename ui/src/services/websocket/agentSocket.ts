@@ -9,7 +9,7 @@ export async function connectWS() {
     useAgents.getState().appendSnapshot(agent.id, agent.latest_snapshot!);
   }
 
-  const ws = new WebSocket('ws://localhost:6969/api/agents/ws');
+  const ws = new WebSocket(`ws://${window.location.host}/api/agents/ws`);
 
   ws.onmessage = (e) => {
     const message: SnapshotEvent = JSON.parse(e.data);
@@ -20,4 +20,3 @@ export async function connectWS() {
     setTimeout(connectWS, 2000);
   };
 }
-

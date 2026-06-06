@@ -37,9 +37,9 @@
 ## 5. REST API (Server)
 
 - [x] `GET /api/agents` — list all agents with status
-- [ ] `GET /api/agents/:id` — agent detail with latest snapshot
-- [ ] `GET /api/agents/:id/history?from=&to=` — historical snapshots for graphs
-- [ ] `GET /api/stats/:id` — aggregated metrics (avg CPU, max memory over time range)
+- [x] `GET /api/agents/:id` — agent detail with latest snapshot
+- [x] `GET /api/agents/:id/history?from=&to=` — historical snapshots for graphs
+- [x] `GET /api/stats/:id` — aggregated metrics (avg CPU, max memory over time range)
 
 ## 6. Frontend WebSocket (Server → Browser)
 
@@ -52,10 +52,10 @@
 
 - [x] Choose framework (plain HTML+JS, React, or Templ for Go templates)
 - [x] Dashboard page: overview of all agents (name, status, CPU, memory, temp)
-- [ ] Agent detail page: per-agent graphs (CPU, memory, network, disk over time)
+- [x] Agent detail page: per-agent graphs (CPU, memory, network, disk over time)
 - [x] Online/offline indicator per agent
 - [x] Auto-update via WebSocket (live data)
-- [ ] Historical graphs using REST API data
+- [x] Historical graphs using REST API data
 
 ## 8. Alerts
 
