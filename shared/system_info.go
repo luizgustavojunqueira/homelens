@@ -2,28 +2,27 @@
 package shared
 
 type SystemInfo struct {
-	CPUUsage    CPUUsage      `json:"cpu_usage"`
-	Memory      MemoryUsage   `json:"memory"`
-	DiskSpace   DiskSpace     `json:"disk_space"`
-	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
-	NetUsage    []NetUsage    `json:"net_usage"`
-	Temperature Temp          `json:"temperature"`
+	CPU         []CPU         `json:"cpu"`
+	Memory      Memory        `json:"memory"`
+	Disk        Disk          `json:"disk"`
+	Network     []Network     `json:"network"`
+	Temperature []Temperature `json:"temperature"`
 }
 
-type CPUUsage struct {
-	CPUInfo []CPUInfo `json:"cpu_info"`
-	CPUAvg  float64   `json:"cpu_avg"`
-}
-
-type CPUInfo struct {
+type CPU struct {
 	Name         string  `json:"name"`
 	UsagePercent float64 `json:"usage_percent"`
 }
 
-type MemoryUsage struct {
+type Memory struct {
 	Total     uint64 `json:"total"`
 	Available uint64 `json:"available"`
 	Used      uint64 `json:"used"`
+}
+
+type Disk struct {
+	DiskSpace   DiskSpace     `json:"disk_space"`
+	DiskIOUsage []DiskIOUsage `json:"disk_io_usage"`
 }
 
 type DiskSpace struct {
@@ -41,18 +40,13 @@ type DiskIOUsage struct {
 	IOPercent float64 `json:"io_percent"`
 }
 
-type NetUsage struct {
+type Network struct {
 	Name  string  `json:"name"`
 	RxBps float64 `json:"rx_bps"`
 	TxBps float64 `json:"tx_bps"`
 }
 
-type Temp struct {
-	TempAvg  float64    `json:"temp_avg"`
-	TempInfo []TempInfo `json:"temp_info"`
-}
-
-type TempInfo struct {
+type Temperature struct {
 	Zone string  `json:"zone"`
 	Temp float64 `json:"temp_c"`
 }

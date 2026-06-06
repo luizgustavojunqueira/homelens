@@ -23,11 +23,11 @@ type SnapshotEvent struct {
 	Snapshot SnapshotEntry `json:"snapshot"`
 }
 
-type GetSnapshotsResponse struct {
-	Snapshots []SnapshotEntryRaw `json:"snapshots"`
-}
-
 type SnapshotEntryRaw struct {
 	Timestamp int64           `json:"timestamp"`
 	Data      json.RawMessage `json:"data"`
+}
+
+type GetSnapshotsResponse struct {
+	Snapshots []SnapshotEntryRaw `json:"snapshots"`
 }

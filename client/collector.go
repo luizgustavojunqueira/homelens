@@ -7,7 +7,7 @@ import (
 	"homelens/shared"
 )
 
-func Collect(ctx context.Context, interval time.Duration, out chan<- shared.SystemInfo) (shared.SystemInfo, error) {
+func Collect(ctx context.Context, interval time.Duration, out chan<- shared.SystemInfo) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -18,22 +18,22 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 	for {
 		select {
 		case <-ctx.Done():
-			return shared.SystemInfo{}, ctx.Err()
+			return ctx.Err()
 
 		case <-ticker.C:
 			currentCPUTime, err := readCPUTime()
 			if err != nil {
-				return shared.SystemInfo{}, err
+				return err
 			}
 
 			currentDiskIO, err := readDiskIO()
 			if err != nil {
-				return shared.SystemInfo{}, err
+				return err
 			}
 
 			currentNetInfo, err := readNetInfo()
 			if err != nil {
-				return shared.SystemInfo{}, err
+				return err
 			}
 
 			if prevCPUTime == nil {
@@ -53,23 +53,27 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 
 			sysInfo := shared.SystemInfo{}
 
-			sysInfo.CPUUsage = getCPUUsage(prevCPUTime, currentCPUTime)
-			sysInfo.DiskIOUsage = calcDiskIOUsage(prevDiskIO, currentDiskIO, interval)
-			sysInfo.NetUsage = calcNetUsage(prevNetInfo, currentNetInfo, interval)
+			sysInfo.CPU = getCPU(prevCPUTime, currentCPUTime)
+
+			diskSpace, err := readDiskSpace("/")
+			if err != nil {
+				return err
+			}
+			sysInfo.Disk = shared.Disk{
+				DiskIOUsage: calcDiskIOUsage(prevDiskIO, currentDiskIO, interval),
+				DiskSpace:   diskSpace,
+			}
+
+			sysInfo.Network = calcNetUsage(prevNetInfo, currentNetInfo, interval)
 
 			sysInfo.Memory, err = readMemoryUsage()
 			if err != nil {
-				return shared.SystemInfo{}, err
-			}
-
-			sysInfo.DiskSpace, err = readDiskSpace("/")
-			if err != nil {
-				return shared.SystemInfo{}, err
+				return err
 			}
 
 			sysInfo.Temperature, err = readTempInfo()
 			if err != nil {
-				return shared.SystemInfo{}, err
+				return err
 			}
 
 			prevCPUTime = currentCPUTime

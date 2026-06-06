@@ -18,12 +18,12 @@ export interface SnapshotEvent {
   agent_id: string;
   snapshot: SnapshotEntry;
 }
-export interface GetSnapshotsResponse {
-  snapshots: SnapshotEntryRaw[];
-}
 export interface SnapshotEntryRaw {
   timestamp: number /* int64 */;
   data: any /* json.RawMessage */;
+}
+export interface GetSnapshotsResponse {
+  snapshots: SnapshotEntryRaw[];
 }
 
 //////////
@@ -33,25 +33,24 @@ Package shared
 */
 
 export interface SystemInfo {
-  cpu_usage: CPUUsage;
-  memory: MemoryUsage;
-  disk_space: DiskSpace;
-  disk_io_usage: DiskIOUsage[];
-  net_usage: NetUsage[];
-  temperature: Temp;
+  cpu: CPU[];
+  memory: Memory;
+  disk: Disk;
+  network: Network[];
+  temperature: Temperature[];
 }
-export interface CPUUsage {
-  cpu_info: CPUInfo[];
-  cpu_avg: number /* float64 */;
-}
-export interface CPUInfo {
+export interface CPU {
   name: string;
   usage_percent: number /* float64 */;
 }
-export interface MemoryUsage {
+export interface Memory {
   total: number /* uint64 */;
   available: number /* uint64 */;
   used: number /* uint64 */;
+}
+export interface Disk {
+  disk_space: DiskSpace;
+  disk_io_usage: DiskIOUsage[];
 }
 export interface DiskSpace {
   path: string;
@@ -66,16 +65,12 @@ export interface DiskIOUsage {
   write_mbps: number /* float64 */;
   io_percent: number /* float64 */;
 }
-export interface NetUsage {
+export interface Network {
   name: string;
   rx_bps: number /* float64 */;
   tx_bps: number /* float64 */;
 }
-export interface Temp {
-  temp_avg: number /* float64 */;
-  temp_info: TempInfo[];
-}
-export interface TempInfo {
+export interface Temperature {
   zone: string;
   temp_c: number /* float64 */;
 }

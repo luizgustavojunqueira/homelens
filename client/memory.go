@@ -9,8 +9,8 @@ import (
 	"homelens/shared"
 )
 
-func readMemoryUsage() (shared.MemoryUsage, error) {
-	memInfo := shared.MemoryUsage{}
+func readMemoryUsage() (shared.Memory, error) {
+	memInfo := shared.Memory{}
 
 	stat, err := os.ReadFile("/proc/meminfo")
 	if err != nil {

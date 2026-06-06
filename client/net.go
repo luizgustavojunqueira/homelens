@@ -52,15 +52,15 @@ func readNetInfo() ([]NetInfo, error) {
 	return nets, nil
 }
 
-func calcNetUsage(prev, curr []NetInfo, interval time.Duration) []shared.NetUsage {
+func calcNetUsage(prev, curr []NetInfo, interval time.Duration) []shared.Network {
 	secs := interval.Seconds()
 
-	var netUsages []shared.NetUsage
+	var netUsages []shared.Network
 
 	for i, c := range curr {
 		p := prev[i]
 
-		netUsages = append(netUsages, shared.NetUsage{
+		netUsages = append(netUsages, shared.Network{
 			Name:  c.Name,
 			RxBps: float64(c.RxBytes-p.RxBytes) / secs,
 			TxBps: float64(c.TxBytes-p.TxBytes) / secs,

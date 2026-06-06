@@ -8,13 +8,13 @@ import (
 	"homelens/shared"
 )
 
-func readTempInfo() (shared.Temp, error) {
+func readTempInfo() ([]shared.Temperature, error) {
 	entries, err := os.ReadDir("/sys/class/thermal")
 	if err != nil {
-		return shared.Temp{}, err
+		return []shared.Temperature{}, err
 	}
 
-	var temps []shared.TempInfo
+	var temps []shared.Temperature
 
 	avgTemp := 0.0
 
@@ -30,7 +30,7 @@ func readTempInfo() (shared.Temp, error) {
 
 		var raw uint64
 		fmt.Sscanf(string(data), "%d", &raw)
-		temps = append(temps, shared.TempInfo{
+		temps = append(temps, shared.Temperature{
 			Zone: e.Name(),
 			Temp: float64(raw) / 1000.0,
 		})
@@ -41,10 +41,5 @@ func readTempInfo() (shared.Temp, error) {
 		avgTemp /= float64(len(temps))
 	}
 
-	temp := shared.Temp{
-		TempAvg:  avgTemp,
-		TempInfo: temps,
-	}
-
-	return temp, nil
+	return temps, nil
 }

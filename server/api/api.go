@@ -1,3 +1,4 @@
+// Package api serves http/websocket endpoints for retrieving agent snapshots data
 package api
 
 import (
@@ -108,7 +109,7 @@ func (api API) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		api.logf("websocket accept error: %v", err)
 		return
 	}
-	defer c.CloseNow()
+	defer func() { _ = c.CloseNow() }()
 
 	api.logf("websocket client connected: %s", r.RemoteAddr)
 

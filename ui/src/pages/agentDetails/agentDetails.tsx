@@ -25,21 +25,25 @@ export default function AgentDetails() {
   const timestamps = agent.history.map((snap) => snap.timestamp) ?? [];
 
   const currentDiskUsage =
-    agent.latest_snapshot.data.disk_space.usage_percent ?? 0;
-  const currentDiskUsed = agent.latest_snapshot.data.disk_space.used ?? 0;
-  const currentDiskTotal = agent.latest_snapshot.data.disk_space.total ?? 0;
+    agent.latest_snapshot.data.disk.disk_space.usage_percent;
+  const currentDiskUsed = agent.latest_snapshot.data.disk.disk_space.used;
+  const currentDiskTotal = agent.latest_snapshot.data.disk.disk_space.total;
 
   const diskTotalIoHistory = getMultiSeries(agent.history, (snap) =>
-    snap.data.disk_io_usage.map((io) => io.read_mbps + io.write_mbps),
+    snap.data.disk.disk_io_usage.map((io) => io.read_mbps + io.write_mbps),
   );
 
-  const diskNames = agent.latest_snapshot.data.disk_io_usage.map(
+  const diskNames = agent.latest_snapshot.data.disk.disk_io_usage.map(
     (disk) => disk.name,
   );
 
-  const currentCpuAvgUsage = agent.latest_snapshot.data.cpu_usage.cpu_avg ?? 0;
+  const currentCpuAvgUsage =
+    agent.latest_snapshot.data.cpu.reduce(
+      (cum, curr) => cum + curr.usage_percent,
+      0,
+    ) / agent.latest_snapshot.data.cpu.length;
   const cpusHistory = getMultiSeries(agent.history, (snap) =>
-    snap.data.cpu_usage.cpu_info.map((cpu) => cpu.usage_percent),
+    snap.data.cpu.map((cpu) => cpu.usage_percent),
   );
 
   const currentMemUsed = agent.latest_snapshot.data.memory.used ?? 0;
@@ -51,14 +55,14 @@ export default function AgentDetails() {
 
   const netRxHistory = getSeries(agent.history, (snap) =>
     convertByteToMetric(
-      snap.data.net_usage.reduce((sum, net) => sum + net.rx_bps, 0),
+      snap.data.network.reduce((sum, net) => sum + net.rx_bps, 0),
       "MB",
     ),
   );
 
   const netTxHistory = getSeries(agent.history, (snap) =>
     convertByteToMetric(
-      snap.data.net_usage.reduce((sum, net) => sum + net.tx_bps, 0),
+      snap.data.network.reduce((sum, net) => sum + net.tx_bps, 0),
       "MB",
     ),
   );
@@ -116,7 +120,6 @@ export default function AgentDetails() {
                 ...cpusHistory.map((cpu, i) => ({
                   name: `CPU ${i}`,
                   values: cpu,
-                  subtle: true,
                 })),
               ]}
             />

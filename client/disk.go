@@ -12,6 +12,8 @@ import (
 	"homelens/shared"
 )
 
+const sectorToMB = 512.0 / (1024.0 * 1024.0)
+
 type DiskIO struct {
 	Name           string `json:"name"`
 	SectorsRead    uint64 `json:"sectors_read"`
@@ -77,8 +79,8 @@ func calcDiskIOUsage(prev, current []DiskIO, interval time.Duration) []shared.Di
 
 		results = append(results, shared.DiskIOUsage{
 			Name:      c.Name,
-			ReadMBps:  float64(c.SectorsRead-p.SectorsRead) * 512 / (1024 * 1024) / secs,
-			WriteMBps: float64(c.SectorsWritten-p.SectorsWritten) * 512 / (1024 * 1024) / secs,
+			ReadMBps:  float64(c.SectorsRead-p.SectorsRead) * sectorToMB / secs,
+			WriteMBps: float64(c.SectorsWritten-p.SectorsWritten) * sectorToMB / secs,
 			IOPercent: float64(c.IOMs-p.IOMs) / (secs * 1000) * 100,
 		})
 	}

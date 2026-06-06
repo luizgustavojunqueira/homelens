@@ -42,7 +42,8 @@ func readCPUTime() ([]CPUTime, error) {
 		}
 
 		var info CPUTime
-		fmt.Sscanf(line, "%s %d %d %d %d %d %d %d %d %d %d",
+		fmt.Sscanf(
+			line, "%s %d %d %d %d %d %d %d %d %d %d",
 			&info.Name,
 			&info.User,
 			&info.Nice,
@@ -61,8 +62,8 @@ func readCPUTime() ([]CPUTime, error) {
 	return cpus, nil
 }
 
-func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) shared.CPUUsage {
-	var cpuInfos []shared.CPUInfo
+func getCPU(oldSamples []CPUTime, newSamples []CPUTime) []shared.CPU {
+	var cpuInfos []shared.CPU
 	for i, sample := range newSamples {
 
 		prev := oldSamples[i]
@@ -70,7 +71,7 @@ func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) shared.CPUUsage {
 		idle := sample.Idle - prev.Idle
 		total := sample.Total() - prev.Total()
 
-		cpuInfos = append(cpuInfos, shared.CPUInfo{
+		cpuInfos = append(cpuInfos, shared.CPU{
 			Name:         sample.Name,
 			UsagePercent: (1.0 - float64(idle)/float64(total)) * 100,
 		})
@@ -82,8 +83,5 @@ func getCPUUsage(oldSamples []CPUTime, newSamples []CPUTime) shared.CPUUsage {
 		sum += info.UsagePercent
 	}
 
-	return shared.CPUUsage{
-		CPUInfo: cpuInfos,
-		CPUAvg:  sum / float64(len(cpuInfos)),
-	}
+	return cpuInfos
 }

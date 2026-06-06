@@ -1,3 +1,4 @@
+// Package server receives and handles websocket connections from agents
 package server
 
 import (
@@ -50,7 +51,7 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		as.logf("websocket accept error: %v", err)
 		return
 	}
-	defer c.CloseNow()
+	defer func() { _ = c.CloseNow() }()
 
 	as.logf("agent connected: %s", agentID)
 	as.registry.Add(agentID, c)
@@ -82,7 +83,6 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Printf("Received snapshot from agent: %s\n", agentID)
-		fmt.Printf("CPU AVG: %f\n", snapshot.CPUUsage.CPUAvg)
 		data, err := json.Marshal(snapshot)
 		if err != nil {
 			as.logf("failed to marshal snapshot: %v", err)
@@ -101,7 +101,7 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		as.registry.Broadcast(shared.SnapshotEvent{
+		broadcastErr := as.registry.Broadcast(shared.SnapshotEvent{
 			AgentID: agentID,
 			Snapshot: shared.SnapshotEntry{
 				Timestamp: time.Now().UnixMilli(),
@@ -109,7 +109,13 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 
+		if broadcastErr != nil {
+			as.logf("failed to broadcast agent %s data: %v", agentID, broadcastErr)
+		}
+
 	}
 
-	c.Close(websocket.StatusNormalClosure, "")
+	if err := c.Close(websocket.StatusNormalClosure, ""); err != nil {
+		as.logf("error closing agent %s websocket cleanly: %v", agentID, err)
+	}
 }

@@ -1,3 +1,4 @@
+// Package client reads data from the current system
 package client
 
 import (
@@ -82,7 +83,11 @@ func (ac *AgentClient) Run(ctx context.Context, interval time.Duration) error {
 	}
 
 	out := make(chan shared.SystemInfo)
-	go Collect(ctx, interval, out)
+	go func() {
+		if err := Collect(ctx, interval, out); err != nil {
+			ac.logf("Error on collect routine: %v", err)
+		}
+	}()
 
 	for {
 		select {
