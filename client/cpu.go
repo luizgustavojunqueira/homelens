@@ -77,11 +77,5 @@ func getCPU(oldSamples []CPUTime, newSamples []CPUTime) []shared.CPU {
 		})
 	}
 
-	sum := 0.0
-
-	for _, info := range cpuInfos {
-		sum += info.UsagePercent
-	}
-
 	return cpuInfos
 }

@@ -27,3 +27,4 @@ dist-ssr
 /homelens-ui/bun.lock
 /homelens.db
 /homelens.db-journal
+/homelens-agent

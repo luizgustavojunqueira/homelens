@@ -16,8 +16,6 @@ func readTempInfo() ([]shared.Temperature, error) {
 
 	var temps []shared.Temperature
 
-	avgTemp := 0.0
-
 	for _, e := range entries {
 		if !strings.HasPrefix(e.Name(), "thermal_zone") {
 			continue
@@ -34,11 +32,6 @@ func readTempInfo() ([]shared.Temperature, error) {
 			Zone: e.Name(),
 			Temp: float64(raw) / 1000.0,
 		})
-		avgTemp += float64(raw) / 1000.0
-	}
-
-	if len(temps) > 0 {
-		avgTemp /= float64(len(temps))
 	}
 
 	return temps, nil
