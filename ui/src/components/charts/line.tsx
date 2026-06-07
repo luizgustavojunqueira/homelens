@@ -12,6 +12,7 @@ export interface ISeries {
   name: string;
   values: number[];
   subtle?: boolean;
+  visible?: boolean;
 }
 
 interface ILine {
@@ -286,43 +287,37 @@ ${
       },
     },
 
-    series: chartSeries.map(
-      (serie): SeriesOption => ({
+    series: chartSeries.map((serie): SeriesOption => {
+      const isHidden = serie.visible === false;
+
+      return {
         name: serie.name,
-
         type: "line",
-
         data: serie.data,
-
         connectNulls: false,
-
         sampling: "lttb",
         progressive: 5000,
         progressiveThreshold: 10000,
-
         animation: false,
         showSymbol: false,
-
+        symbol: "none",
         smooth: true,
-
-        silent: !!serie.subtle,
-
+        silent: isHidden || !!serie.subtle,
         lineStyle: {
-          width: serie.subtle ? 1 : 3,
-          opacity: serie.subtle ? 0.15 : 1,
+          width: isHidden ? 0 : serie.subtle ? 1 : 3,
+          opacity: isHidden ? 0 : serie.subtle ? 0.15 : 1,
           color: seriesColors.get(serie.name),
         },
-
-        areaStyle: serie.subtle
-          ? undefined
-          : {
-              opacity: 0.05,
-              color: seriesColors.get(serie.name),
-            },
-
+        areaStyle:
+          isHidden || serie.subtle
+            ? undefined
+            : {
+                opacity: 0.05,
+                color: seriesColors.get(serie.name),
+              },
         z: serie.subtle ? 1 : 100,
-      }),
-    ),
+      };
+    }),
 
     dataZoom: [
       {

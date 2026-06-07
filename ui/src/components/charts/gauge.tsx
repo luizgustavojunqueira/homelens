@@ -3,12 +3,19 @@ import ReactECharts from "echarts-for-react";
 
 interface IGauge {
   value: number;
+  symbol?: string;
   label: string;
   used?: string;
   total?: string;
 }
 
-export default function Gauge({ value, label, used, total }: IGauge) {
+export default function Gauge({
+  value,
+  symbol = "%",
+  label,
+  used,
+  total,
+}: IGauge) {
   const option: EChartsOption = {
     backgroundColor: "transparent",
 
@@ -39,7 +46,7 @@ export default function Gauge({ value, label, used, total }: IGauge) {
           <div style="font-weight:600">
             ${label}
           </div>
-          <div>${value.toFixed(1)}%</div>
+          <div>${value.toFixed(1)}${symbol}</div>
         `;
       },
       position: (point) => {
@@ -96,7 +103,7 @@ export default function Gauge({ value, label, used, total }: IGauge) {
           fontWeight: "bold",
           color: "#fafafa",
           offsetCenter: [0, "-5%"],
-          formatter: (v: number) => `${v.toFixed(1)}%`,
+          formatter: (v: number) => `${v.toFixed(1)} ${symbol}`,
         },
 
         title: {
