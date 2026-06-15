@@ -4,6 +4,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"homelens/shared"
@@ -17,16 +19,26 @@ type AgentClient struct {
 	addr              string
 	conn              *websocket.Conn
 	token             string
-	agentID           string
+	machineID         string
 	reconnectAttempts int
 	reconnectDelay    time.Duration
 }
 
-func NewAgentClient(logf func(f string, v ...any), token, agentID string, addr string) *AgentClient {
+func GetMachineID() (string, error) {
+	machineIDFile, err := os.ReadFile("/etc/machine-id")
+	if err != nil {
+		return "", err
+	}
+	machineID := strings.TrimSpace(string(machineIDFile))
+
+	return machineID, nil
+}
+
+func NewAgentClient(logf func(f string, v ...any), machineID, token, addr string) *AgentClient {
 	return &AgentClient{
 		logf:              logf,
 		token:             token,
-		agentID:           agentID,
+		machineID:         machineID,
 		conn:              nil,
 		addr:              addr,
 		reconnectAttempts: 0,
@@ -42,13 +54,13 @@ func (ac *AgentClient) Connect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
 	defer cancel()
-	c, _, err := websocket.Dial(ctx, "ws://"+ac.addr+"/ws?token="+ac.token+"&agent_id="+ac.agentID, nil)
+	c, _, err := websocket.Dial(ctx, "ws://"+ac.addr+"/ws?token="+ac.token+"&machine_id="+ac.machineID, nil)
 	if err != nil {
 		ac.logf("websocket dial error: %v", err)
 		return err
 	}
 
-	fmt.Printf("Connected to ws://%s/ws?token=%s&agent_id=%s\n", ac.addr, ac.token, ac.agentID)
+	fmt.Printf("Connected to ws://%s/ws?token=%s&machine_id=%s\n", ac.addr, ac.token, ac.machineID)
 	ac.conn = c
 	return nil
 }
@@ -76,7 +88,7 @@ func (ac *AgentClient) SendSnapshot(snapshot shared.SystemInfo) error {
 }
 
 func (ac *AgentClient) Run(ctx context.Context, interval time.Duration) error {
-	ac.logf("Starting agent with ID %s", ac.agentID)
+	ac.logf("Starting agent with ID %s", ac.machineID)
 	if err := ac.Connect(); err != nil {
 		ac.logf("Failed to connect to server: %v", err)
 		return err

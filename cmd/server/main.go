@@ -70,7 +70,7 @@ func run() error {
 	mux.Handle("/", api.ServeFrontend())
 	mux.HandleFunc("/api/agents", api.GetAgents)
 	mux.HandleFunc("/api/agents/ws", api.HandleWebsocket)
-	mux.HandleFunc("/api/agents/{id}", api.GetSnapshots)
+	mux.HandleFunc("/api/agents/{guid}", api.GetSnapshots)
 
 	return http.ListenAndServe(addr, corsMiddleware(mux))
 }

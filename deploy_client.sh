@@ -1,13 +1,12 @@
 #!/bin/bash
 
 TARGET=$1
-AGENT_ID=$2
-TOKEN=$3
-SERVER_ADDR=$4
-INTERVAL=$5
+TOKEN=$2
+SERVER_ADDR=$3
+INTERVAL=$4
 
-if [ -z "$TARGET" ] || [ -z "$AGENT_ID" ] || [ -z "$TOKEN" ] || [ -z "$SERVER_ADDR" ] || [ -z "$INTERVAL" ]; then
-  echo "Uso: ./deploy.sh <usuario@ip> <nome-do-agente> <token> <endereco-servidor> <intervalo-segundos>"
+if [ -z "$TARGET" ] ||  [ -z "$TOKEN" ] || [ -z "$SERVER_ADDR" ] || [ -z "$INTERVAL" ]; then
+  echo "Uso: ./deploy.sh <usuario@ip> <token> <endereco-servidor> <intervalo-segundos>"
   exit 1
 fi
 
@@ -32,7 +31,6 @@ ssh -t $TARGET "
 
   echo 'Configurando variáveis de ambiente...'
   echo 'HOMELENS_AUTH_TOKEN=$TOKEN' | sudo tee /etc/homelens/agent.env > /dev/null
-  echo 'HOMELENS_AGENT_ID=$AGENT_ID' | sudo tee -a /etc/homelens/agent.env > /dev/null
   echo 'HOMELENS_SERVER_ADDR=$SERVER_ADDR' | sudo tee -a /etc/homelens/agent.env > /dev/null
   echo 'HOMELENS_SECONDS_INTERVAL=$INTERVAL' | sudo tee -a /etc/homelens/agent.env > /dev/null
 
@@ -60,4 +58,4 @@ WantedBy=multi-user.target' | sudo tee /etc/systemd/system/homelens-agent.servic
   sudo systemctl status homelens-agent --no-pager | head -n 5
 "
 
-echo "Deploy concluído para $AGENT_ID."
+echo "Deploy concluído para $TARGET."

@@ -5,18 +5,20 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 )
 
 type Agent struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	LastSeen time.Time `json:"last_seen"`
+	Guid      string         `json:"guid"`
+	Name      sql.NullString `json:"name"`
+	MachineID string         `json:"machine_id"`
+	LastSeen  time.Time      `json:"last_seen"`
 }
 
 type Snapshot struct {
 	ID        int64     `json:"id"`
-	AgentID   string    `json:"agent_id"`
+	AgentGuid string    `json:"agent_guid"`
 	Timestamp time.Time `json:"timestamp"`
 	Data      string    `json:"data"`
 }

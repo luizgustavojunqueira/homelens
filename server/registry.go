@@ -26,28 +26,28 @@ func NewAgentRegistry() *AgentRegistry {
 	}
 }
 
-func (ar *AgentRegistry) Add(agentID string, conn *websocket.Conn) {
+func (ar *AgentRegistry) Add(machineID string, conn *websocket.Conn) {
 	ar.mutex.Lock()
-	ar.agents[agentID] = conn
+	ar.agents[machineID] = conn
 	ar.mutex.Unlock()
 }
 
-func (ar *AgentRegistry) Remove(agentID string) {
+func (ar *AgentRegistry) Remove(machineID string) {
 	ar.mutex.Lock()
-	delete(ar.agents, agentID)
+	delete(ar.agents, machineID)
 	ar.mutex.Unlock()
 }
 
-func (ar *AgentRegistry) Get(agentID string) (*websocket.Conn, bool) {
+func (ar *AgentRegistry) Get(machineID string) (*websocket.Conn, bool) {
 	ar.mutex.RLock()
-	conn, exists := ar.agents[agentID]
+	conn, exists := ar.agents[machineID]
 	ar.mutex.RUnlock()
 	return conn, exists
 }
 
-func (ar *AgentRegistry) IsOnline(agentID string) bool {
+func (ar *AgentRegistry) IsOnline(machineID string) bool {
 	ar.mutex.RLock()
-	_, exists := ar.agents[agentID]
+	_, exists := ar.agents[machineID]
 	ar.mutex.RUnlock()
 	return exists
 }

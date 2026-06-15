@@ -1,32 +1,36 @@
--- name: UpsertAgent :exec
-INSERT INTO agents (id, name, last_seen)
+-- name: UpsertAgent :one
+INSERT INTO agents (guid, machine_id, last_seen)
 VALUES (?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-    name      = excluded.name,
-    last_seen = excluded.last_seen;
+ON CONFLICT(machine_id) DO UPDATE SET
+    last_seen = excluded.last_seen
+RETURNING *;
+
+-- name: UpdateAgentName :exec
+UPDATE agents
+SET name = ?
+WHERE guid = ?;
 
 -- name: GetAgent :one
-SELECT * FROM agents WHERE id = ? LIMIT 1;
+SELECT * FROM agents WHERE guid = ? LIMIT 1;
 
 -- name: ListAgents :many
 SELECT * FROM agents ORDER BY last_seen DESC;
 
 -- name: InsertSnapshot :exec
-INSERT INTO snapshots (agent_id, timestamp, data)
+INSERT INTO snapshots (agent_guid, timestamp, data)
 VALUES (?, ?, ?);
 
 -- name: GetLatestSnapshot :one
 SELECT * FROM snapshots
-WHERE agent_id = ?
+WHERE agent_guid = ?
 ORDER BY timestamp DESC
 LIMIT 1;
 
 -- name: ListSnapshotsByRange :many
-SELECT id, agent_id, timestamp, data
+SELECT id, agent_guid, timestamp, data
 FROM snapshots
-WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
+WHERE agent_guid = ? AND timestamp >= ? AND timestamp <= ?
 ORDER BY timestamp ASC;
 
 -- name: DeleteSnapshotsOlderThan :exec
 DELETE FROM snapshots WHERE timestamp < ?;
-

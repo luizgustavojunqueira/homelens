@@ -17,29 +17,30 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	var token, agentID, addr, secondsInterval string
+	var token, addr, intervalStr string
 
 	token = os.Getenv("HOMELENS_AUTH_TOKEN")
-	agentID = os.Getenv("HOMELENS_AGENT_ID")
 	addr = os.Getenv("HOMELENS_SERVER_ADDR")
-	secondsInterval = os.Getenv("HOMELENS_SECONDS_INTERVAL")
+	intervalStr = os.Getenv("HOMELENS_SECONDS_INTERVAL")
 
-	if token == "" || agentID == "" || addr == "" {
-		log.Fatal("HOMELENS_AUTH_TOKEN, HOMELENS_AGENT_ID, and HOMELENS_SERVER_ADDR environment variables must be set")
+	if token == "" || addr == "" {
+		log.Fatal("HOMELENS_AUTH_TOKEN and HOMELENS_SERVER_ADDR environment variables must be set")
 	}
 
-	interval, err := strconv.Atoi(secondsInterval)
-	if err != nil {
+	interval, err := strconv.Atoi(intervalStr)
+	if err != nil || interval <= 0 {
 		interval = 10
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	machineID, err := client.GetMachineID()
+	if err != nil {
+		log.Fatalf("could not get agent id: %v", err)
+	}
 
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	agentClient := client.NewAgentClient(log.Printf, machineID, token, addr)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
-	agentClient := client.NewAgentClient(log.Printf, token, agentID, addr)
 
 	if err := agentClient.Run(ctx, time.Second*time.Duration(interval)); err != nil {
 		log.Fatalf("agent client error: %v", err)

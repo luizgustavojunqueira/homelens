@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -20,29 +21,34 @@ func (q *Queries) DeleteSnapshotsOlderThan(ctx context.Context, timestamp time.T
 }
 
 const getAgent = `-- name: GetAgent :one
-SELECT id, name, last_seen FROM agents WHERE id = ? LIMIT 1
+SELECT guid, name, machine_id, last_seen FROM agents WHERE guid = ? LIMIT 1
 `
 
-func (q *Queries) GetAgent(ctx context.Context, id string) (Agent, error) {
-	row := q.db.QueryRowContext(ctx, getAgent, id)
+func (q *Queries) GetAgent(ctx context.Context, guid string) (Agent, error) {
+	row := q.db.QueryRowContext(ctx, getAgent, guid)
 	var i Agent
-	err := row.Scan(&i.ID, &i.Name, &i.LastSeen)
+	err := row.Scan(
+		&i.Guid,
+		&i.Name,
+		&i.MachineID,
+		&i.LastSeen,
+	)
 	return i, err
 }
 
 const getLatestSnapshot = `-- name: GetLatestSnapshot :one
-SELECT id, agent_id, timestamp, data FROM snapshots
-WHERE agent_id = ?
+SELECT id, agent_guid, timestamp, data FROM snapshots
+WHERE agent_guid = ?
 ORDER BY timestamp DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestSnapshot(ctx context.Context, agentID string) (Snapshot, error) {
-	row := q.db.QueryRowContext(ctx, getLatestSnapshot, agentID)
+func (q *Queries) GetLatestSnapshot(ctx context.Context, agentGuid string) (Snapshot, error) {
+	row := q.db.QueryRowContext(ctx, getLatestSnapshot, agentGuid)
 	var i Snapshot
 	err := row.Scan(
 		&i.ID,
-		&i.AgentID,
+		&i.AgentGuid,
 		&i.Timestamp,
 		&i.Data,
 	)
@@ -50,23 +56,23 @@ func (q *Queries) GetLatestSnapshot(ctx context.Context, agentID string) (Snapsh
 }
 
 const insertSnapshot = `-- name: InsertSnapshot :exec
-INSERT INTO snapshots (agent_id, timestamp, data)
+INSERT INTO snapshots (agent_guid, timestamp, data)
 VALUES (?, ?, ?)
 `
 
 type InsertSnapshotParams struct {
-	AgentID   string    `json:"agent_id"`
+	AgentGuid string    `json:"agent_guid"`
 	Timestamp time.Time `json:"timestamp"`
 	Data      string    `json:"data"`
 }
 
 func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error {
-	_, err := q.db.ExecContext(ctx, insertSnapshot, arg.AgentID, arg.Timestamp, arg.Data)
+	_, err := q.db.ExecContext(ctx, insertSnapshot, arg.AgentGuid, arg.Timestamp, arg.Data)
 	return err
 }
 
 const listAgents = `-- name: ListAgents :many
-SELECT id, name, last_seen FROM agents ORDER BY last_seen DESC
+SELECT guid, name, machine_id, last_seen FROM agents ORDER BY last_seen DESC
 `
 
 func (q *Queries) ListAgents(ctx context.Context) ([]Agent, error) {
@@ -78,7 +84,12 @@ func (q *Queries) ListAgents(ctx context.Context) ([]Agent, error) {
 	var items []Agent
 	for rows.Next() {
 		var i Agent
-		if err := rows.Scan(&i.ID, &i.Name, &i.LastSeen); err != nil {
+		if err := rows.Scan(
+			&i.Guid,
+			&i.Name,
+			&i.MachineID,
+			&i.LastSeen,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -93,20 +104,20 @@ func (q *Queries) ListAgents(ctx context.Context) ([]Agent, error) {
 }
 
 const listSnapshotsByRange = `-- name: ListSnapshotsByRange :many
-SELECT id, agent_id, timestamp, data
+SELECT id, agent_guid, timestamp, data
 FROM snapshots
-WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
+WHERE agent_guid = ? AND timestamp >= ? AND timestamp <= ?
 ORDER BY timestamp ASC
 `
 
 type ListSnapshotsByRangeParams struct {
-	AgentID     string    `json:"agent_id"`
+	AgentGuid   string    `json:"agent_guid"`
 	Timestamp   time.Time `json:"timestamp"`
 	Timestamp_2 time.Time `json:"timestamp_2"`
 }
 
 func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]Snapshot, error) {
-	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.AgentID, arg.Timestamp, arg.Timestamp_2)
+	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.AgentGuid, arg.Timestamp, arg.Timestamp_2)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +127,7 @@ func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByR
 		var i Snapshot
 		if err := rows.Scan(
 			&i.ID,
-			&i.AgentID,
+			&i.AgentGuid,
 			&i.Timestamp,
 			&i.Data,
 		); err != nil {
@@ -133,21 +144,44 @@ func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByR
 	return items, nil
 }
 
-const upsertAgent = `-- name: UpsertAgent :exec
-INSERT INTO agents (id, name, last_seen)
+const updateAgentName = `-- name: UpdateAgentName :exec
+UPDATE agents
+SET name = ?
+WHERE guid = ?
+`
+
+type UpdateAgentNameParams struct {
+	Name sql.NullString `json:"name"`
+	Guid string         `json:"guid"`
+}
+
+func (q *Queries) UpdateAgentName(ctx context.Context, arg UpdateAgentNameParams) error {
+	_, err := q.db.ExecContext(ctx, updateAgentName, arg.Name, arg.Guid)
+	return err
+}
+
+const upsertAgent = `-- name: UpsertAgent :one
+INSERT INTO agents (guid, machine_id, last_seen)
 VALUES (?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-    name      = excluded.name,
+ON CONFLICT(machine_id) DO UPDATE SET
     last_seen = excluded.last_seen
+RETURNING guid, name, machine_id, last_seen
 `
 
 type UpsertAgentParams struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	LastSeen time.Time `json:"last_seen"`
+	Guid      string    `json:"guid"`
+	MachineID string    `json:"machine_id"`
+	LastSeen  time.Time `json:"last_seen"`
 }
 
-func (q *Queries) UpsertAgent(ctx context.Context, arg UpsertAgentParams) error {
-	_, err := q.db.ExecContext(ctx, upsertAgent, arg.ID, arg.Name, arg.LastSeen)
-	return err
+func (q *Queries) UpsertAgent(ctx context.Context, arg UpsertAgentParams) (Agent, error) {
+	row := q.db.QueryRowContext(ctx, upsertAgent, arg.Guid, arg.MachineID, arg.LastSeen)
+	var i Agent
+	err := row.Scan(
+		&i.Guid,
+		&i.Name,
+		&i.MachineID,
+		&i.LastSeen,
+	)
+	return i, err
 }

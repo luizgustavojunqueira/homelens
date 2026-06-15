@@ -13,6 +13,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
+	"github.com/google/uuid"
 )
 
 type AgentServer struct {
@@ -36,12 +37,13 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
 	if token != as.token {
+		as.logf("%s : %s", token, as.token)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	agentID := r.URL.Query().Get("agent_id")
-	if agentID == "" {
+	machineID := r.URL.Query().Get("machine_id")
+	if machineID == "" {
 		http.Error(w, "Missing agent_id", http.StatusBadRequest)
 		return
 	}
@@ -53,12 +55,14 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = c.CloseNow() }()
 
-	as.logf("agent connected: %s", agentID)
-	as.registry.Add(agentID, c)
-	defer as.registry.Remove(agentID)
+	as.logf("agent connected: %s", machineID)
+	as.registry.Add(machineID, c)
+	defer as.registry.Remove(machineID)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*24)
 	defer cancel()
+
+	agentGUID := uuid.New().String()
 
 	for {
 
@@ -73,23 +77,26 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		err = as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
-			ID:       agentID,
-			Name:     agentID,
-			LastSeen: time.Now(),
+		agent, err := as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
+			Guid:      agentGUID,
+			MachineID: machineID,
+			LastSeen:  time.Now(),
 		})
 		if err != nil {
 			as.logf("failed to upsert agent in database: %v", err)
 		}
 
-		fmt.Printf("Received snapshot from agent: %s\n", agentID)
+		fmt.Printf("Received snapshot from agent: %s\n", machineID)
 		data, err := json.Marshal(snapshot)
 		if err != nil {
 			as.logf("failed to marshal snapshot: %v", err)
 			continue
 		}
+
+		agentGUID = agent.Guid
+
 		dbSnapshot := db.InsertSnapshotParams{
-			AgentID:   agentID,
+			AgentGuid: agentGUID,
 			Timestamp: time.Now(),
 			Data:      string(data),
 		}
@@ -102,7 +109,8 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		broadcastErr := as.registry.Broadcast(shared.SnapshotEvent{
-			AgentID: agentID,
+			AgentName: agent.Name.String,
+			AgentGuid: agentGUID,
 			Snapshot: shared.SnapshotEntry{
 				Timestamp: time.Now().UnixMilli(),
 				Data:      snapshot,
@@ -110,12 +118,12 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if broadcastErr != nil {
-			as.logf("failed to broadcast agent %s data: %v", agentID, broadcastErr)
+			as.logf("failed to broadcast agent %s data: %v", machineID, broadcastErr)
 		}
 
 	}
 
 	if err := c.Close(websocket.StatusNormalClosure, ""); err != nil {
-		as.logf("error closing agent %s websocket cleanly: %v", agentID, err)
+		as.logf("error closing agent %s websocket cleanly: %v", machineID, err)
 	}
 }

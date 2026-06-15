@@ -45,10 +45,21 @@ export default function AgentDetails() {
   const cpusHistory = getMultiSeries(agent.history, (snap) =>
     snap.data.cpu.map((cpu) => cpu.usage_percent),
   );
+  const cpuAvgHistory = getSeries(
+    agent.history,
+    (snap) =>
+      snap.data.cpu.reduce((cum, curr) => cum + curr.usage_percent, 0) /
+      snap.data.cpu.length,
+  );
 
   const currentMemUsed = agent.latest_snapshot.data.memory.used ?? 0;
   const currentMemTotal = agent.latest_snapshot.data.memory.total ?? 0;
   const currentMemUsage = (currentMemUsed / currentMemTotal) * 100;
+  const currentTemp =
+    agent.latest_snapshot.data.temperature.reduce(
+      (cum, curr) => cum + curr.temp_c,
+      0,
+    ) / agent.latest_snapshot.data.temperature.length;
   const memUsedHistory = agent.history.map((snap) =>
     convertByteToMetric(snap.data.memory.used, "GB", "KB"),
   );
@@ -74,7 +85,7 @@ export default function AgentDetails() {
       </div>
 
       <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="border border-(--border) rounded-md bg-(--bg-elev) p-4 h-64">
             <Gauge
               value={currentDiskUsage}
@@ -101,32 +112,49 @@ export default function AgentDetails() {
               used={formatByteStr(currentMemUsed, "KB")}
             />
           </div>
-        </div>
 
-        <div className="border border-(--border) rounded-md bg-(--bg-elev)">
-          <div className="px-4 py-3 border-b border-(--border)">
-            <h3 className="text-sm font-medium text-(--text)">
-              CPU Usage History
-            </h3>
-          </div>
-
-          <div className="h-96 p-2">
-            <Line
-              isTotalAverage={true}
-              timestamps={timestamps}
-              label="CPU Usage (%)"
-              valueFormatter={(v) => `${v.toFixed(2)} %`}
-              series={[
-                ...cpusHistory.map((cpu, i) => ({
-                  name: `CPU ${i}`,
-                  values: cpu,
-                })),
-              ]}
+          <div className="border border-(--border) rounded-md bg-(--bg-elev) p-4 h-64">
+            <Gauge
+              value={currentTemp}
+              label="Temperature"
+              symbol="C°"
+              total={"100 C°"}
+              used={`${currentTemp.toFixed(2)} C°`}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="border border-(--border) rounded-md bg-(--bg-elev)"></div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 grid-rows-2 gap-4">
+          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
+            <div className="px-4 py-3 border-b border-(--border)">
+              <h3 className="text-sm font-medium text-(--text)">
+                CPU Usage History
+              </h3>
+            </div>
+
+            <div className="h-96 p-2">
+              <Line
+                isTotalAverage={true}
+                timestamps={timestamps}
+                label="CPU Usage (%)"
+                valueFormatter={(v) => `${v.toFixed(2)} %`}
+                series={[
+                  {
+                    name: "Average",
+                    values: cpuAvgHistory,
+                  },
+                  ...cpusHistory.map((cpu, i) => ({
+                    name: `CPU ${i}`,
+                    values: cpu,
+                    visible: false,
+                  })),
+                ]}
+              />
+            </div>
+          </div>
+
           <div className="border border-(--border) rounded-md bg-(--bg-elev)">
             <div className="px-4 py-3 border-b border-(--border)">
               <h3 className="text-sm font-medium text-(--text)">
@@ -168,9 +196,7 @@ export default function AgentDetails() {
               />
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="border border-(--border) rounded-md bg-(--bg-elev)">
             <div className="px-4 py-3 border-b border-(--border)">
               <h3 className="text-sm font-medium text-(--text)">

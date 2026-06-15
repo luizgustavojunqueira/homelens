@@ -43,7 +43,7 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 	agentsResult := make([]shared.Agent, len(agents))
 	for i, agent := range agents {
 
-		agentLatestSnapshot, err := api.db.GetLatestSnapshot(context.Background(), agent.ID)
+		agentLatestSnapshot, err := api.db.GetLatestSnapshot(context.Background(), agent.Guid)
 		if err != nil {
 			api.logf("GetLatestSnapshot error: %v", err)
 			http.Error(w, "Failed to get latest snapshot", http.StatusInternalServerError)
@@ -60,10 +60,10 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 		entry.Timestamp = agentLatestSnapshot.Timestamp.UnixMilli()
 
 		agentsResult[i] = shared.Agent{
-			ID:             agent.ID,
-			Name:           agent.Name,
+			Guid:           agent.Guid,
+			Name:           agent.Name.String,
 			LastSeen:       agent.LastSeen,
-			Online:         api.registry.IsOnline(agent.ID),
+			Online:         api.registry.IsOnline(agent.MachineID),
 			LatestSnapshot: entry,
 		}
 	}
@@ -76,10 +76,10 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
-	agentID := r.PathValue("id")
+	agentGUID := r.PathValue("guid")
 
 	rows, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
-		AgentID:     agentID,
+		AgentGuid:   agentGUID,
 		Timestamp:   time.Now().Add(-24 * time.Hour),
 		Timestamp_2: time.Now(),
 	})

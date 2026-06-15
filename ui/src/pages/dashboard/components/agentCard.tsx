@@ -16,9 +16,10 @@ export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
   const memTotal = (snap.memory.total ?? 0) * 1024;
   const memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
   const diskPct = snap.disk.disk_space.usage_percent;
-  const temp =
-    snap.temperature.reduce((cum, curr) => cum + curr.temp_c, 0) /
-    snap.temperature.length;
+  const temp = snap.temperature
+    ? snap.temperature.reduce((cum, curr) => cum + curr.temp_c, 0) /
+      snap.temperature.length
+    : 0;
 
   const totalNetRx =
     snap.network.reduce((sum, net) => sum + net.rx_bps, 0) ?? 0;
@@ -108,15 +109,16 @@ export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
                 <div>
                   <strong>Detailed TEMP Usage</strong>
                 </div>
-                {snap.temperature.map(({ temp_c, zone }) => (
-                  <MetricBar
-                    key={zone}
-                    name={zone}
-                    value={temp_c}
-                    isTemp
-                    labelWidth="w-28"
-                  />
-                ))}
+                {snap.temperature &&
+                  snap.temperature.map(({ temp_c, zone }) => (
+                    <MetricBar
+                      key={zone}
+                      name={zone}
+                      value={temp_c}
+                      isTemp
+                      labelWidth="w-28"
+                    />
+                  ))}
               </div>
             }
           >
