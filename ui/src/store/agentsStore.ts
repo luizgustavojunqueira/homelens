@@ -3,27 +3,31 @@ import type { Agent, SnapshotEntry } from "../api/models";
 
 type AgentState = Agent & {
   history: SnapshotEntry[];
-}
+};
 
 interface AgentsStore {
   agents: Record<string, AgentState>;
-  appendSnapshot: (agent_id: string, snapshot: SnapshotEntry) => void;
-  getAgentState: (agent_id: string) => AgentState | undefined;
-  insertHistory: (agent_id: string, snapshots: SnapshotEntry[]) => void;
+  appendSnapshot: (guid: string, snapshot: SnapshotEntry, name: string) => void;
+  getAgentState: (guid: string) => AgentState | undefined;
+  insertHistory: (guid: string, snapshots: SnapshotEntry[]) => void;
 }
 
 export const useAgents = create<AgentsStore>((set) => ({
   agents: {},
-  appendSnapshot: (agent_id: string, snapshot: SnapshotEntry) => {
+  appendSnapshot: (
+    guid: string,
+    snapshot: SnapshotEntry,
+    name: string = "",
+  ) => {
     set((state) => {
-      const agentState: AgentState = state.agents[agent_id];
+      const agentState: AgentState = state.agents[guid];
       if (!agentState) {
         return {
           agents: {
             ...state.agents,
-            [agent_id]: {
-              id: agent_id,
-              name: agent_id,
+            [guid]: {
+              guid: guid,
+              name: name,
               last_seen: String(snapshot.timestamp),
               online: true,
               latest_snapshot: snapshot,
@@ -37,39 +41,37 @@ export const useAgents = create<AgentsStore>((set) => ({
       return {
         agents: {
           ...state.agents,
-          [agent_id]: {
+          [guid]: {
             ...agentState,
             latest_snapshot: snapshot,
             history: updatedHistory,
           },
         },
       };
-
-    })
+    });
   },
-  getAgentState: (agent_id: string) => {
-    const agentState: AgentState = useAgents.getState().agents[agent_id];
+  getAgentState: (guid: string) => {
+    const agentState: AgentState = useAgents.getState().agents[guid];
     return agentState;
   },
-  insertHistory: (agent_id: string, snapshots: SnapshotEntry[]) => {
+  insertHistory: (guid: string, snapshots: SnapshotEntry[]) => {
     set((state) => {
-      const currentOldest = state.agents[agent_id]?.history[0];
-      const filtered = snapshots.filter(snap => {
+      const currentOldest = state.agents[guid]?.history[0];
+      const filtered = snapshots.filter((snap) => {
         if (!currentOldest) return true;
         return snap.timestamp < currentOldest.timestamp;
-      })
-      const agentState: AgentState = state.agents[agent_id];
+      });
+      const agentState: AgentState = state.agents[guid];
       if (!agentState) return state;
       return {
         agents: {
           ...state.agents,
-          [agent_id]: {
+          [guid]: {
             ...agentState,
             history: [...filtered, ...agentState.history],
-          }
-        }
-      }
-    })
-  }
-}))
-
+          },
+        },
+      };
+    });
+  },
+}));

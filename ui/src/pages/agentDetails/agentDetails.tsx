@@ -9,16 +9,16 @@ import { getMultiSeries, getSeries } from "./agentDetailsUtils";
 
 export default function AgentDetails() {
   const params = useParams();
-  const agentId = params.agentId;
+  const agentGuid = params.guid;
 
-  const agent = useAgents((state) => state.getAgentState(agentId!));
+  const agent = useAgents((state) => state.getAgentState(agentGuid!));
 
   useEffect(() => {
-    if (!agentId) return;
-    getSnapshots(agentId).then((res) => {
-      useAgents.getState().insertHistory(agentId, res.snapshots);
+    if (!agentGuid) return;
+    getSnapshots(agentGuid).then((res) => {
+      useAgents.getState().insertHistory(agentGuid, res.snapshots);
     });
-  }, [agentId]);
+  }, [agentGuid]);
 
   if (agent === undefined) return;
 
@@ -220,6 +220,22 @@ export default function AgentDetails() {
                   },
                 ]}
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
+            <div className="px-4 py-3 border-b border-(--border)">
+              <h3 className="text-sm font-medium text-(--text)">
+                Docker Containers
+              </h3>
+            </div>
+          </div>
+
+          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
+            <div className="px-4 py-3 border-b border-(--border)">
+              <h3 className="text-sm font-medium text-(--text)">Processess</h3>
             </div>
           </div>
         </div>

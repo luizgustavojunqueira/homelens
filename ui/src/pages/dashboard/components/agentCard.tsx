@@ -6,7 +6,7 @@ import MetricBar from "../../../components/metricBar";
 import { formatByteStr } from "../../../utils";
 import NetworkUsage from "../../../components/networkUsage";
 
-export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
+export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
   const navigate = useNavigate();
   const snap = latest_snapshot.data;
   const cpuPct =
@@ -29,7 +29,7 @@ export function AgentCard({ id, name, online, latest_snapshot }: Agent) {
   return (
     <div
       className="w-full grid grid-cols-[minmax(150px,1fr)_repeat(5,1.1fr)_24px] items-center gap-6 px-5 py-0 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer min-h-16 overflow-hidden overflow-x-auto"
-      onClick={() => navigate(`/agents/${id}`)}
+      onClick={() => navigate(`/agents/${guid}`)}
     >
       <div className="flex items-center gap-3 min-w-0">
         <span className={`dot ${online ? "" : "off"}`}></span>

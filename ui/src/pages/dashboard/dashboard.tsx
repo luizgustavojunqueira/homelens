@@ -1,5 +1,5 @@
-import { useAgents } from '../../store/agentsStore';
-import { AgentCard } from './components/agentCard';
+import { useAgents } from "../../store/agentsStore";
+import { AgentCard } from "./components/agentCard";
 
 export function Dashboard() {
   const agentsMap = useAgents((state) => state.agents);
@@ -17,7 +17,7 @@ export function Dashboard() {
 
       <div className="border border-(--border) rounded-md bg-(--bg-elev) divide-y divide-(--border)">
         {agents.map((agent) => (
-          <AgentCard key={agent.id} {...agent} />
+          <AgentCard key={agent.guid} {...agent} />
         ))}
       </div>
     </section>

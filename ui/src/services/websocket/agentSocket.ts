@@ -6,14 +6,18 @@ export async function connectWS() {
   const initial = await getAgents();
 
   for (const agent of initial) {
-    useAgents.getState().appendSnapshot(agent.id, agent.latest_snapshot!);
+    useAgents
+      .getState()
+      .appendSnapshot(agent.guid, agent.latest_snapshot!, agent.name);
   }
 
-  const ws = new WebSocket(`ws://${window.location.host}/api/agents/ws`);
+  const ws = new WebSocket(`/api/agents/ws`);
 
   ws.onmessage = (e) => {
     const message: SnapshotEvent = JSON.parse(e.data);
-    useAgents.getState().appendSnapshot(message.agent_id, message.snapshot);
+    useAgents
+      .getState()
+      .appendSnapshot(message.agent_guid, message.snapshot, message.agent_name);
   };
 
   ws.onclose = () => {

@@ -4,7 +4,7 @@
 // source: model.go
 
 export interface Agent {
-  id: string;
+  guid: string;
   name: string;
   last_seen: string;
   online: boolean;
@@ -15,7 +15,8 @@ export interface SnapshotEntry {
   data: SystemInfo;
 }
 export interface SnapshotEvent {
-  agent_id: string;
+  agent_guid: string;
+  agent_name: string;
   snapshot: SnapshotEntry;
 }
 export interface SnapshotEntryRaw {

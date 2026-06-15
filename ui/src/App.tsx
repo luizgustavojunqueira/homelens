@@ -1,14 +1,14 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { Header } from './components/header';
-import { Dashboard } from './pages/dashboard/dashboard';
-import AgentDetails from './pages/agentDetails/agentDetails';
-import { useEffect } from 'react';
-import { connectWS } from './services/websocket/agentSocket';
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Header } from "./components/header";
+import { Dashboard } from "./pages/dashboard/dashboard";
+import AgentDetails from "./pages/agentDetails/agentDetails";
+import { useEffect } from "react";
+import { connectWS } from "./services/websocket/agentSocket";
 
 function App() {
   useEffect(() => {
-    connectWS()
-  }, [])
+    connectWS();
+  }, []);
 
   return (
     <BrowserRouter>
@@ -16,7 +16,7 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/agents/:agentId" element={<AgentDetails />} />
+          <Route path="/agents/:guid" element={<AgentDetails />} />
         </Routes>
       </main>
     </BrowserRouter>
