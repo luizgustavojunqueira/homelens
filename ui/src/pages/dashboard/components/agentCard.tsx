@@ -89,8 +89,11 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                 <hr className="my-2 border-(--border)" />
                 <div className="text-left">
                   {snap.disk.disk_io_usage.map(
-                    ({ name, read_mbps, write_mbps }) => (
-                      <div key={name} className="flex flex-col text-sm">
+                    ({ name, read_mbps, write_mbps }, index) => (
+                      <div
+                        key={`${name}-${index}`}
+                        className="flex flex-col text-sm"
+                      >
                         <span>{name}</span>
                         <span className="text-(--text-dim)">{`R: ${read_mbps.toFixed(2)} MB/s  W: ${write_mbps.toFixed(2)} MB/s`}</span>
                       </div>
@@ -110,9 +113,9 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                   <strong>Detailed TEMP Usage</strong>
                 </div>
                 {snap.temperature &&
-                  snap.temperature.map(({ temp_c, zone }) => (
+                  snap.temperature.map(({ temp_c, zone }, index) => (
                     <MetricBar
-                      key={zone}
+                      key={`${zone}-${index}`}
                       name={zone}
                       value={temp_c}
                       isTemp
@@ -131,9 +134,9 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                 <div>
                   <strong>Detailed NET Usage</strong>
                 </div>
-                {snap.network.map(({ name, rx_bps, tx_bps }) => (
+                {snap.network.map(({ name, rx_bps, tx_bps }, index) => (
                   <NetworkUsage
-                    key={name}
+                    key={`${name}-${index}`}
                     name={name}
                     rx={rx_bps}
                     tx={tx_bps}

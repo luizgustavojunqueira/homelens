@@ -32,3 +32,8 @@ type SnapshotEntryRaw struct {
 type GetSnapshotsResponse struct {
 	Snapshots []SnapshotEntryRaw `json:"snapshots"`
 }
+
+type UpdateNameRequest struct {
+	Name string `json:"name"`
+	GUID string `json:"guid"`
+}

@@ -9,12 +9,30 @@ import { getMultiSeries, getSeries } from "./agentDetailsUtils";
 import Grid from "../../components/grid/grid";
 import Row from "../../components/grid/row";
 import Cell from "../../components/grid/cell";
+import { useForm } from "react-hook-form";
+import TextInput from "../../components/inputs/TextInput";
+import { updateName } from "../../api/agents";
+import { toast } from "react-toastify";
+
+interface AgentForm {
+  agentName: string;
+}
 
 export default function AgentDetails() {
   const params = useParams();
   const agentGuid = params.guid;
 
   const agent = useAgents((state) => state.getAgentState(agentGuid!));
+
+  const { control, reset } = useForm<AgentForm>({
+    defaultValues: { agentName: agent?.name || "" },
+  });
+
+  useEffect(() => {
+    if (agent?.name) {
+      reset({ agentName: agent.name });
+    }
+  }, [agent?.name, reset]);
 
   useEffect(() => {
     if (!agentGuid) return;
@@ -24,6 +42,18 @@ export default function AgentDetails() {
   }, [agentGuid]);
 
   if (agent === undefined) return;
+
+  const handleNameUpdate = (newName: string) => {
+    if (newName.trim() === "" || newName === agent.name) return;
+
+    updateName({ name: newName, guid: agent.guid }).then((res) => {
+      if (res) {
+        toast.success("Agent name changed");
+      } else {
+        toast.error("Error changing agent name");
+      }
+    });
+  };
 
   const latestData = agent.latest_snapshot.data;
   const agentIp = latestData.agent_ip;
@@ -80,8 +110,15 @@ export default function AgentDetails() {
 
   return (
     <section className="px-6 py-6 flex-1 overflow-y-auto max-w-screen">
-      <div className="flex items-baseline gap-3 mb-6">
-        <h2 className="text-xl font-medium text-(--text)">{agent.name}</h2>
+      <div className="flex items-baseline gap-3 mb-6 w-full max-w-sm">
+        <TextInput
+          name="agentName"
+          control={control}
+          onDebounce={handleNameUpdate}
+          debounceTime={800}
+          placeholder="Nome do Agente"
+          className="text-xl font-medium w-full"
+        />
       </div>
 
       <div className="space-y-6">

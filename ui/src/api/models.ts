@@ -26,6 +26,10 @@ export interface SnapshotEntryRaw {
 export interface GetSnapshotsResponse {
   snapshots: SnapshotEntryRaw[];
 }
+export interface UpdateNameRequest {
+  name: string;
+  guid: string;
+}
 
 //////////
 // source: system_info.go

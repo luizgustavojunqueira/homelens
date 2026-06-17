@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io/fs"
 	"log"
@@ -154,4 +155,29 @@ func (api API) ServeFrontend() http.Handler {
 
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+func (api API) UpdateAgentName(w http.ResponseWriter, r *http.Request) {
+	var updateNameRequest shared.UpdateNameRequest
+	err := json.NewDecoder(r.Body).Decode(&updateNameRequest)
+	if err != nil {
+		http.Error(w, "Failed to decode response", http.StatusBadRequest)
+		return
+	}
+
+	err = api.db.UpdateAgentName(context.Background(), db.UpdateAgentNameParams{
+		Name: sql.NullString{String: updateNameRequest.Name, Valid: true},
+		Guid: updateNameRequest.GUID,
+	})
+	if err != nil {
+		http.Error(w, "Failed to list agents", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(true)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

@@ -43,6 +43,8 @@ export const useAgents = create<AgentsStore>((set) => ({
           ...state.agents,
           [guid]: {
             ...agentState,
+            name: name,
+            last_seen: String(snapshot.timestamp),
             latest_snapshot: snapshot,
             history: updatedHistory,
           },

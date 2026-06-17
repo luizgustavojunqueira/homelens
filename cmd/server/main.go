@@ -71,6 +71,7 @@ func run() error {
 	mux.HandleFunc("/api/agents", api.GetAgents)
 	mux.HandleFunc("/api/agents/ws", api.HandleWebsocket)
 	mux.HandleFunc("/api/agents/{guid}", api.GetSnapshots)
+	mux.HandleFunc("/api/agents/update-name", api.UpdateAgentName)
 
 	return http.ListenAndServe(addr, corsMiddleware(mux))
 }
