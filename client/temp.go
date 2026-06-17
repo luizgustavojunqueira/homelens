@@ -8,10 +8,10 @@ import (
 	"homelens/shared"
 )
 
-func readTempInfo() ([]shared.Temperature, error) {
+func readTempInfo() []shared.Temperature {
 	entries, err := os.ReadDir("/sys/class/thermal")
 	if err != nil {
-		return []shared.Temperature{}, err
+		return nil
 	}
 
 	var temps []shared.Temperature
@@ -34,5 +34,5 @@ func readTempInfo() ([]shared.Temperature, error) {
 		})
 	}
 
-	return temps, nil
+	return temps
 }

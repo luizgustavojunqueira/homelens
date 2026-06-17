@@ -6,7 +6,7 @@ type SystemInfo struct {
 	Memory      Memory        `json:"memory"`
 	Disk        Disk          `json:"disk"`
 	Network     []Network     `json:"network"`
-	Temperature []Temperature `json:"temperature"`
+	Temperature []Temperature `json:"temperature,omitempty"`
 }
 
 type CPU struct {

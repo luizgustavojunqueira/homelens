@@ -38,7 +38,7 @@ export interface SystemInfo {
   memory: Memory;
   disk: Disk;
   network: Network[];
-  temperature: Temperature[];
+  temperature?: Temperature[];
 }
 export interface CPU {
   name: string;

@@ -22,26 +22,23 @@ export default function AgentDetails() {
 
   if (agent === undefined) return;
 
+  const latestData = agent.latest_snapshot.data;
+
   const timestamps = agent.history.map((snap) => snap.timestamp) ?? [];
 
-  const currentDiskUsage =
-    agent.latest_snapshot.data.disk.disk_space.usage_percent;
-  const currentDiskUsed = agent.latest_snapshot.data.disk.disk_space.used;
-  const currentDiskTotal = agent.latest_snapshot.data.disk.disk_space.total;
+  const currentDiskUsage = latestData.disk.disk_space.usage_percent;
+  const currentDiskUsed = latestData.disk.disk_space.used;
+  const currentDiskTotal = latestData.disk.disk_space.total;
 
   const diskTotalIoHistory = getMultiSeries(agent.history, (snap) =>
     snap.data.disk.disk_io_usage.map((io) => io.read_mbps + io.write_mbps),
   );
 
-  const diskNames = agent.latest_snapshot.data.disk.disk_io_usage.map(
-    (disk) => disk.name,
-  );
+  const diskNames = latestData.disk.disk_io_usage.map((disk) => disk.name);
 
   const currentCpuAvgUsage =
-    agent.latest_snapshot.data.cpu.reduce(
-      (cum, curr) => cum + curr.usage_percent,
-      0,
-    ) / agent.latest_snapshot.data.cpu.length;
+    latestData.cpu.reduce((cum, curr) => cum + curr.usage_percent, 0) /
+    latestData.cpu.length;
   const cpusHistory = getMultiSeries(agent.history, (snap) =>
     snap.data.cpu.map((cpu) => cpu.usage_percent),
   );
@@ -52,14 +49,13 @@ export default function AgentDetails() {
       snap.data.cpu.length,
   );
 
-  const currentMemUsed = agent.latest_snapshot.data.memory.used ?? 0;
-  const currentMemTotal = agent.latest_snapshot.data.memory.total ?? 0;
+  const currentMemUsed = latestData.memory.used ?? 0;
+  const currentMemTotal = latestData.memory.total ?? 0;
   const currentMemUsage = (currentMemUsed / currentMemTotal) * 100;
-  const currentTemp =
-    agent.latest_snapshot.data.temperature.reduce(
-      (cum, curr) => cum + curr.temp_c,
-      0,
-    ) / agent.latest_snapshot.data.temperature.length;
+  const currentTemp = latestData.temperature
+    ? latestData.temperature.reduce((cum, curr) => cum + curr.temp_c, 0) /
+      latestData.temperature.length
+    : undefined;
   const memUsedHistory = agent.history.map((snap) =>
     convertByteToMetric(snap.data.memory.used, "GB", "KB"),
   );
@@ -113,15 +109,17 @@ export default function AgentDetails() {
             />
           </div>
 
-          <div className="border border-(--border) rounded-md bg-(--bg-elev) p-4 h-64">
-            <Gauge
-              value={currentTemp}
-              label="Temperature"
-              symbol="C°"
-              total={"100 C°"}
-              used={`${currentTemp.toFixed(2)} C°`}
-            />
-          </div>
+          {currentTemp && (
+            <div className="border border-(--border) rounded-md bg-(--bg-elev) p-4 h-64">
+              <Gauge
+                value={currentTemp}
+                label="Temperature"
+                symbol="C°"
+                total={"100 C°"}
+                used={`${currentTemp.toFixed(2)} C°`}
+              />
+            </div>
+          )}
         </div>
 
         <div className="border border-(--border) rounded-md bg-(--bg-elev)"></div>

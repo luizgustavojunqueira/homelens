@@ -71,10 +71,7 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 				return err
 			}
 
-			sysInfo.Temperature, err = readTempInfo()
-			if err != nil {
-				return err
-			}
+			sysInfo.Temperature = readTempInfo()
 
 			prevCPUTime = currentCPUTime
 			prevDiskIO = currentDiskIO
