@@ -64,6 +64,8 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	agentGUID := uuid.New().String()
 
+	agentConnected := true
+
 	for {
 
 		var snapshot shared.SystemInfo
@@ -74,6 +76,7 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				as.logf("agent connection lost: %v", err)
 			}
+			agentConnected = false
 			break
 		}
 
@@ -110,7 +113,7 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		broadcastErr := as.registry.Broadcast(shared.SnapshotEvent{
 			AgentName: agent.Name.String,
-			AgentGuid: agentGUID,
+			AgentGUID: agentGUID,
 			Snapshot: shared.SnapshotEntry{
 				Timestamp: time.Now().UnixMilli(),
 				Data:      snapshot,
@@ -121,6 +124,10 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			as.logf("failed to broadcast agent %s data: %v", machineID, broadcastErr)
 		}
 
+	}
+
+	if !agentConnected {
+		return
 	}
 
 	if err := c.Close(websocket.StatusNormalClosure, ""); err != nil {

@@ -6,7 +6,7 @@ import (
 )
 
 type Agent struct {
-	Guid           string        `json:"guid"`
+	GUID           string        `json:"guid"`
 	Name           string        `json:"name"`
 	LastSeen       time.Time     `json:"last_seen"`
 	Online         bool          `json:"online"`
@@ -19,7 +19,7 @@ type SnapshotEntry struct {
 }
 
 type SnapshotEvent struct {
-	AgentGuid string        `json:"agent_guid"`
+	AgentGUID string        `json:"agent_guid"`
 	AgentName string        `json:"agent_name"`
 	Snapshot  SnapshotEntry `json:"snapshot"`
 }

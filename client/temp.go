@@ -108,9 +108,6 @@ func (h hwmonStrategy) Read() []shared.Temperature {
 
 			var raw uint64
 			fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &raw)
-			if err != nil {
-				continue
-			}
 			temps = append(temps, shared.Temperature{
 				Zone: label,
 				Temp: float64(raw) / 1000.0,

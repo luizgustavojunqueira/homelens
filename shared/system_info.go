@@ -2,11 +2,12 @@
 package shared
 
 type SystemInfo struct {
-	CPU         []CPU         `json:"cpu"`
-	Memory      Memory        `json:"memory"`
-	Disk        Disk          `json:"disk"`
-	Network     []Network     `json:"network"`
-	Temperature []Temperature `json:"temperature,omitempty"`
+	CPU         []CPU             `json:"cpu"`
+	Memory      Memory            `json:"memory"`
+	Disk        Disk              `json:"disk"`
+	Network     []Network         `json:"network"`
+	Temperature []Temperature     `json:"temperature,omitempty"`
+	Containers  []DockerContainer `json:"containers,omitempty"`
 }
 
 type CPU struct {
@@ -49,4 +50,18 @@ type Network struct {
 type Temperature struct {
 	Zone string  `json:"zone"`
 	Temp float64 `json:"temp_c"`
+}
+
+type DockerPort struct {
+	PrivatePort int    `json:"private_port"`
+	PublicPort  int    `json:"public_port"`
+	Type        string `json:"type"`
+}
+
+type DockerContainer struct {
+	Name   string       `json:"name"`
+	State  string       `json:"state"`
+	Image  string       `json:"image"`
+	Status string       `json:"status"`
+	Ports  []DockerPort `json:"ports"`
 }

@@ -60,7 +60,7 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 		entry.Timestamp = agentLatestSnapshot.Timestamp.UnixMilli()
 
 		agentsResult[i] = shared.Agent{
-			Guid:           agent.Guid,
+			GUID:           agent.Guid,
 			Name:           agent.Name.String,
 			LastSeen:       agent.LastSeen,
 			Online:         api.registry.IsOnline(agent.MachineID),
