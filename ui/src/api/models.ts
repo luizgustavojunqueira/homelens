@@ -39,6 +39,8 @@ export interface SystemInfo {
   disk: Disk;
   network: Network[];
   temperature?: Temperature[];
+  containers?: DockerContainer[];
+  agent_ip: string;
 }
 export interface CPU {
   name: string;
@@ -74,4 +76,16 @@ export interface Network {
 export interface Temperature {
   zone: string;
   temp_c: number /* float64 */;
+}
+export interface DockerPort {
+  private_port: number /* int */;
+  public_port: number /* int */;
+  type: string;
+}
+export interface DockerContainer {
+  name: string;
+  state: string;
+  image: string;
+  status: string;
+  ports: DockerPort[];
 }

@@ -8,6 +8,7 @@ type SystemInfo struct {
 	Network     []Network         `json:"network"`
 	Temperature []Temperature     `json:"temperature,omitempty"`
 	Containers  []DockerContainer `json:"containers,omitempty"`
+	AgentIP     string            `json:"agent_ip"`
 }
 
 type CPU struct {

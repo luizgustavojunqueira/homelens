@@ -6,6 +6,9 @@ import { convertByteToMetric, formatByteStr } from "../../utils";
 import Line from "../../components/charts/line";
 import { useAgents } from "../../store/agentsStore";
 import { getMultiSeries, getSeries } from "./agentDetailsUtils";
+import Grid from "../../components/grid/grid";
+import Row from "../../components/grid/row";
+import Cell from "../../components/grid/cell";
 
 export default function AgentDetails() {
   const params = useParams();
@@ -23,6 +26,7 @@ export default function AgentDetails() {
   if (agent === undefined) return;
 
   const latestData = agent.latest_snapshot.data;
+  const agentIp = latestData.agent_ip;
 
   const timestamps = agent.history.map((snap) => snap.timestamp) ?? [];
 
@@ -75,7 +79,7 @@ export default function AgentDetails() {
   );
 
   return (
-    <section className="px-6 py-6 flex-1 overflow-y-auto">
+    <section className="px-6 py-6 flex-1 overflow-y-auto max-w-screen">
       <div className="flex items-baseline gap-3 mb-6">
         <h2 className="text-xl font-medium text-(--text)">{agent.name}</h2>
       </div>
@@ -222,19 +226,60 @@ export default function AgentDetails() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
-            <div className="px-4 py-3 border-b border-(--border)">
-              <h3 className="text-sm font-medium text-(--text)">
-                Docker Containers
-              </h3>
-            </div>
+        <div className="flex flex-col gap-4 bg-(--bg-elev) rounded-xl w-full">
+          <div className="px-3 pt-3">
+            <h3 className="text-xl font-medium text-(--text)">
+              Docker Containers
+            </h3>
           </div>
+          <Grid
+            columns={["Name", "Image", "State", "Status", "Ports"]}
+            widths={["w-[20%]", "w-[30%]", "w-[10%]", "w-[15%]", "w-[25%]"]}
+          >
+            {latestData.containers?.map((c) => (
+              <Row key={c.name}>
+                <Cell>{c.name}</Cell>
+                <Cell>{c.image}</Cell>
+                <Cell>
+                  <span
+                    className={`${c.state === "running" ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {c.state}
+                  </span>
+                </Cell>
+                <Cell>{c.status}</Cell>
 
-          <div className="border border-(--border) rounded-md bg-(--bg-elev)">
-            <div className="px-4 py-3 border-b border-(--border)">
-              <h3 className="text-sm font-medium text-(--text)">Processess</h3>
-            </div>
+                <Cell>
+                  <div className="flex flex-wrap gap-2">
+                    {c.ports
+                      ?.filter((p) => p.public_port)
+                      .map((p, index) => (
+                        <a
+                          key={index}
+                          href={`http://${agentIp}:${p.public_port}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 text-xs font-mono text-(--text) bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded transition-colors"
+                          title={`Access port ${p.public_port}`}
+                        >
+                          {p.private_port} : {p.public_port}
+                        </a>
+                      ))}
+
+                    {(!c.ports ||
+                      c.ports.filter((p) => p.public_port).length === 0) && (
+                      <span className="text-xs text-gray-500 italic">-</span>
+                    )}
+                  </div>
+                </Cell>
+              </Row>
+            ))}
+          </Grid>{" "}
+        </div>
+
+        <div className="border border-(--border) rounded-md bg-(--bg-elev)">
+          <div className="px-4 py-3 border-b border-(--border)">
+            <h3 className="text-sm font-medium text-(--text)">Processess</h3>
           </div>
         </div>
       </div>

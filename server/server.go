@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -79,6 +80,12 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			agentConnected = false
 			break
 		}
+
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+		snapshot.AgentIP = ip
 
 		agent, err := as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
 			Guid:      agentGUID,
