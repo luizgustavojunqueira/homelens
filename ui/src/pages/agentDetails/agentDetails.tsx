@@ -162,9 +162,7 @@ export default function AgentDetails() {
             </div>
           )}
         </div>
-
         <div className="border border-(--border) rounded-md bg-(--bg-elev)"></div>
-
         <div className="grid grid-cols-1 xl:grid-cols-2 grid-rows-2 gap-4">
           <div className="border border-(--border) rounded-md bg-(--bg-elev)">
             <div className="px-4 py-3 border-b border-(--border)">
@@ -262,8 +260,7 @@ export default function AgentDetails() {
             </div>
           </div>
         </div>
-
-        <div className="flex flex-col gap-4 bg-(--bg-elev) rounded-xl w-full">
+        <div className="flex flex-col gap-4 bg-(--bg-elev) rounded-xl w-full overflow-hidden border border-(--border)">
           <div className="px-3 pt-3">
             <h3 className="text-xl font-medium text-(--text)">
               Docker Containers
@@ -299,7 +296,7 @@ export default function AgentDetails() {
                           className="px-2 py-1 text-xs font-mono text-(--text) bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded transition-colors"
                           title={`Access port ${p.public_port}`}
                         >
-                          {p.private_port} : {p.public_port}
+                          {p.private_port}:{p.public_port}
                         </a>
                       ))}
 
@@ -311,14 +308,57 @@ export default function AgentDetails() {
                 </Cell>
               </Row>
             ))}
-          </Grid>{" "}
+          </Grid>
         </div>
-
-        <div className="border border-(--border) rounded-md bg-(--bg-elev)">
-          <div className="px-4 py-3 border-b border-(--border)">
-            <h3 className="text-sm font-medium text-(--text)">Processess</h3>
+        <div className="flex flex-col gap-4 bg-(--bg-elev) rounded-xl w-full overflow-hidden border border-(--border)">
+          <div className="px-4 pt-4 pb-2">
+            <h3 className="text-xl font-medium text-(--text)">Top Processes</h3>
           </div>
-        </div>
+
+          <Grid
+            columns={["PID", "CPU", "Mem", "User", "Name", "Command"]}
+            widths={[
+              "w-[8%]",
+              "w-[10%]",
+              "w-[10%]",
+              "w-[10%]",
+              "w-[12%]",
+              "w-[50%]",
+            ]}
+          >
+            {latestData.processes?.map((p) => (
+              <Row key={p.pid}>
+                <Cell>
+                  <span className="font-mono text-gray-400">{p.pid}</span>
+                </Cell>
+                <Cell>
+                  <span
+                    className={p.cpu > 50 ? "text-red-500 font-medium" : ""}
+                  >
+                    {p.cpu.toFixed(1)} %
+                  </span>
+                </Cell>
+
+                <Cell>{p.memory.toFixed(1)} %</Cell>
+
+                <Cell>{p.user}</Cell>
+
+                <Cell>
+                  <span className="block truncate">{p.name}</span>
+                </Cell>
+
+                <Cell>
+                  <span
+                    title={p.command}
+                    className="block truncate text-gray-400 font-mono text-sm"
+                  >
+                    {p.command}
+                  </span>
+                </Cell>
+              </Row>
+            ))}
+          </Grid>
+        </div>{" "}
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ type SystemInfo struct {
 	Temperature []Temperature     `json:"temperature,omitempty"`
 	Containers  []DockerContainer `json:"containers,omitempty"`
 	AgentIP     string            `json:"agent_ip"`
+	Processes   []Process         `json:"processes"`
 }
 
 type CPU struct {
@@ -65,4 +66,15 @@ type DockerContainer struct {
 	Image  string       `json:"image"`
 	Status string       `json:"status"`
 	Ports  []DockerPort `json:"ports"`
+}
+
+type Process struct {
+	PID     int     `json:"pid"`
+	User    string  `json:"user"`
+	CPU     float64 `json:"cpu"`
+	Memory  float64 `json:"memory"`
+	RSS     uint64  `json:"rss"`
+	Uptime  int     `json:"uptime"`
+	Name    string  `json:"name"`
+	Cmdline string  `json:"command"`
 }

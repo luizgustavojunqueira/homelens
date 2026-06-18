@@ -75,6 +75,8 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 
 			sysInfo.Containers = readDockerContainers()
 
+			sysInfo.Processes = readTopProcesses()
+
 			prevCPUTime = currentCPUTime
 			prevDiskIO = currentDiskIO
 			prevNetInfo = currentNetInfo

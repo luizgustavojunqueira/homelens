@@ -45,6 +45,7 @@ export interface SystemInfo {
   temperature?: Temperature[];
   containers?: DockerContainer[];
   agent_ip: string;
+  processes: Process[];
 }
 export interface CPU {
   name: string;
@@ -92,4 +93,14 @@ export interface DockerContainer {
   image: string;
   status: string;
   ports: DockerPort[];
+}
+export interface Process {
+  pid: number /* int */;
+  user: string;
+  cpu: number /* float64 */;
+  memory: number /* float64 */;
+  rss: number /* uint64 */;
+  uptime: number /* int */;
+  name: string;
+  command: string;
 }
