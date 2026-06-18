@@ -1,5 +1,11 @@
 import { getAgents } from "../../api/agents";
-import type { SnapshotEvent } from "../../api/models";
+import {
+  SnapshotType,
+  StatusChangeType,
+  type BroadcastMessage,
+  type SnapshotEvent,
+  type StatusChangeEvent,
+} from "../../api/models";
 import { useAgents } from "../../store/agentsStore";
 
 export async function connectWS() {
@@ -14,10 +20,27 @@ export async function connectWS() {
   const ws = new WebSocket(`/api/agents/ws`);
 
   ws.onmessage = (e) => {
-    const message: SnapshotEvent = JSON.parse(e.data);
-    useAgents
-      .getState()
-      .appendSnapshot(message.agent_guid, message.snapshot, message.agent_name);
+    const message: BroadcastMessage = JSON.parse(e.data);
+
+    switch (message.type) {
+      case SnapshotType:
+        const dataSnapshot: SnapshotEvent = message.payload as SnapshotEvent;
+        useAgents
+          .getState()
+          .appendSnapshot(
+            dataSnapshot.agent_guid,
+            dataSnapshot.snapshot,
+            dataSnapshot.agent_name,
+          );
+        break;
+      case StatusChangeType:
+        const dataStatus: StatusChangeEvent =
+          message.payload as StatusChangeEvent;
+        useAgents
+          .getState()
+          .changeOnline(dataStatus.agent_guid, dataStatus.online);
+        break;
+    }
   };
 
   ws.onclose = () => {

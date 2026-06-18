@@ -3,6 +3,9 @@
 //////////
 // source: model.go
 
+export type EventType = string;
+export const SnapshotType: EventType = "snapshot";
+export const StatusChangeType: EventType = "status_change";
 export interface Agent {
   guid: string;
   name: string;
@@ -18,6 +21,14 @@ export interface SnapshotEvent {
   agent_guid: string;
   agent_name: string;
   snapshot: SnapshotEntry;
+}
+export interface StatusChangeEvent {
+  agent_guid: string;
+  online: boolean;
+}
+export interface BroadcastMessage {
+  type: EventType;
+  payload: any;
 }
 export interface SnapshotEntryRaw {
   timestamp: number /* int64 */;

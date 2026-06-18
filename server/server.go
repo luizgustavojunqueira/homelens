@@ -118,12 +118,15 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		broadcastErr := as.registry.Broadcast(shared.SnapshotEvent{
-			AgentName: agent.Name.String,
-			AgentGUID: agentGUID,
-			Snapshot: shared.SnapshotEntry{
-				Timestamp: time.Now().UnixMilli(),
-				Data:      snapshot,
+		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
+			Type: shared.SnapshotType,
+			Payload: shared.SnapshotEvent{
+				AgentName: agent.Name.String,
+				AgentGUID: agentGUID,
+				Snapshot: shared.SnapshotEntry{
+					Timestamp: time.Now().UnixMilli(),
+					Data:      snapshot,
+				},
 			},
 		})
 
@@ -134,6 +137,18 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !agentConnected {
+		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
+			Type: shared.StatusChangeType,
+			Payload: shared.StatusChangeEvent{
+				AgentGUID: agentGUID,
+				Online:    false,
+			},
+		})
+
+		if broadcastErr != nil {
+			as.logf("failed to broadcast agent %s data: %v", machineID, broadcastErr)
+		}
+
 		return
 	}
 

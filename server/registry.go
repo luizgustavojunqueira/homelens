@@ -69,7 +69,7 @@ func (ar *AgentRegistry) Unsubscribe(conn *websocket.Conn) {
 	ar.subsMutex.Unlock()
 }
 
-func (ar *AgentRegistry) Broadcast(event shared.SnapshotEvent) error {
+func (ar *AgentRegistry) Broadcast(event shared.BroadcastMessage) error {
 	for _, conn := range ar.subsConnections {
 		err := wsjson.Write(context.Background(), conn, event)
 		if err != nil {

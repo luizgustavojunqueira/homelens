@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+type EventType string
+
+const (
+	SnapshotType     EventType = "snapshot"
+	StatusChangeType EventType = "status_change"
+)
+
 type Agent struct {
 	GUID           string        `json:"guid"`
 	Name           string        `json:"name"`
@@ -22,6 +29,16 @@ type SnapshotEvent struct {
 	AgentGUID string        `json:"agent_guid"`
 	AgentName string        `json:"agent_name"`
 	Snapshot  SnapshotEntry `json:"snapshot"`
+}
+
+type StatusChangeEvent struct {
+	AgentGUID string `json:"agent_guid"`
+	Online    bool   `json:"online"`
+}
+
+type BroadcastMessage struct {
+	Type    EventType `json:"type"`
+	Payload any       `json:"payload"`
 }
 
 type SnapshotEntryRaw struct {

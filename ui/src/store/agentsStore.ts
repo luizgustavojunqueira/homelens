@@ -10,10 +10,33 @@ interface AgentsStore {
   appendSnapshot: (guid: string, snapshot: SnapshotEntry, name: string) => void;
   getAgentState: (guid: string) => AgentState | undefined;
   insertHistory: (guid: string, snapshots: SnapshotEntry[]) => void;
+  changeOnline: (guid: string, online: boolean) => void;
 }
 
 export const useAgents = create<AgentsStore>((set) => ({
   agents: {},
+  changeOnline: (guid: string, online: boolean) => {
+    set((state) => {
+      const agentState: AgentState = state.agents[guid];
+
+      if (!agentState) {
+        return {
+          agents: {
+            ...state.agents,
+          },
+        };
+      }
+      return {
+        agents: {
+          ...state.agents,
+          [guid]: {
+            ...agentState,
+            online: online,
+          },
+        },
+      };
+    });
+  },
   appendSnapshot: (
     guid: string,
     snapshot: SnapshotEntry,
@@ -44,6 +67,7 @@ export const useAgents = create<AgentsStore>((set) => ({
           [guid]: {
             ...agentState,
             name: name,
+            online: true,
             last_seen: String(snapshot.timestamp),
             latest_snapshot: snapshot,
             history: updatedHistory,
