@@ -36,6 +36,25 @@ func (q *Queries) GetAgent(ctx context.Context, guid string) (Agent, error) {
 	return i, err
 }
 
+const getAlertConfig = `-- name: GetAlertConfig :one
+SELECT id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url FROM alert_configs LIMIT 1
+`
+
+func (q *Queries) GetAlertConfig(ctx context.Context) (AlertConfig, error) {
+	row := q.db.QueryRowContext(ctx, getAlertConfig)
+	var i AlertConfig
+	err := row.Scan(
+		&i.ID,
+		&i.CpuThreshold,
+		&i.MemThreshold,
+		&i.DiskThreshold,
+		&i.OfflineMins,
+		&i.ToleranceMins,
+		&i.WebhookUrl,
+	)
+	return i, err
+}
+
 const getLatestSnapshot = `-- name: GetLatestSnapshot :one
 SELECT id, agent_guid, timestamp, data FROM snapshots
 WHERE agent_guid = ?
@@ -182,6 +201,47 @@ func (q *Queries) UpsertAgent(ctx context.Context, arg UpsertAgentParams) (Agent
 		&i.Name,
 		&i.MachineID,
 		&i.LastSeen,
+	)
+	return i, err
+}
+
+const upsertAlertConfig = `-- name: UpsertAlertConfig :one
+INSERT INTO alert_configs (id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    id = excluded.id
+RETURNING id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url
+`
+
+type UpsertAlertConfigParams struct {
+	ID            int64          `json:"id"`
+	CpuThreshold  sql.NullInt64  `json:"cpu_threshold"`
+	MemThreshold  sql.NullInt64  `json:"mem_threshold"`
+	DiskThreshold sql.NullInt64  `json:"disk_threshold"`
+	OfflineMins   sql.NullInt64  `json:"offline_mins"`
+	ToleranceMins sql.NullInt64  `json:"tolerance_mins"`
+	WebhookUrl    sql.NullString `json:"webhook_url"`
+}
+
+func (q *Queries) UpsertAlertConfig(ctx context.Context, arg UpsertAlertConfigParams) (AlertConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertAlertConfig,
+		arg.ID,
+		arg.CpuThreshold,
+		arg.MemThreshold,
+		arg.DiskThreshold,
+		arg.OfflineMins,
+		arg.ToleranceMins,
+		arg.WebhookUrl,
+	)
+	var i AlertConfig
+	err := row.Scan(
+		&i.ID,
+		&i.CpuThreshold,
+		&i.MemThreshold,
+		&i.DiskThreshold,
+		&i.OfflineMins,
+		&i.ToleranceMins,
+		&i.WebhookUrl,
 	)
 	return i, err
 }

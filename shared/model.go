@@ -10,6 +10,7 @@ type EventType string
 const (
 	SnapshotType     EventType = "snapshot"
 	StatusChangeType EventType = "status_change"
+	AlertType        EventType = "alert"
 )
 
 type Agent struct {
@@ -53,4 +54,29 @@ type GetSnapshotsResponse struct {
 type UpdateNameRequest struct {
 	Name string `json:"name"`
 	GUID string `json:"guid"`
+}
+
+type UpdateAlertConfigRequest struct {
+	CPUThreshold     int64  `json:"cpu_threshold"`
+	MemThreshold     int64  `json:"mem_threshold"`
+	DiskThreshold    int64  `json:"disk_threshold"`
+	OfflineThreshold int64  `json:"offline_threshold"`
+	ToleranceMinutes int64  `json:"tolerance_minutes"`
+	WebhookURL       string `json:"webhook_url"`
+}
+
+type GetAlertConfigResponse struct {
+	CPUThreshold     int64  `json:"cpu_threshold"`
+	MemThreshold     int64  `json:"mem_threshold"`
+	DiskThreshold    int64  `json:"disk_threshold"`
+	OfflineThreshold int64  `json:"offline_threshold"`
+	ToleranceMinutes int64  `json:"tolerance_minutes"`
+	WebhookURL       string `json:"webhook_url"`
+}
+
+type AlertPayload struct {
+	AgentName string  `json:"agent_name"`
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Active    bool    `json:"active"`
 }

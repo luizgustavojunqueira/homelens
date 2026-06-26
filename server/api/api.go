@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"homelens/server"
+	"homelens/server/alert"
 	"homelens/server/db"
 	"homelens/shared"
 	"homelens/ui"
@@ -19,18 +21,32 @@ import (
 	"github.com/coder/websocket"
 )
 
-type API struct {
-	registry *server.AgentRegistry
-	db       *db.Queries
-
-	logf func(f string, v ...any)
+type Querier interface {
+	ListAgents(ctx context.Context) ([]db.Agent, error)
+	GetLatestSnapshot(ctx context.Context, agentGUID string) (db.Snapshot, error)
+	ListSnapshotsByRange(ctx context.Context, arg db.ListSnapshotsByRangeParams) ([]db.Snapshot, error)
+	UpdateAgentName(ctx context.Context, arg db.UpdateAgentNameParams) error
+	UpsertAlertConfig(ctx context.Context, arg db.UpsertAlertConfigParams) (db.AlertConfig, error)
+	GetAlertConfig(ctx context.Context) (db.AlertConfig, error)
 }
 
-func NewAPI(logf func(f string, v ...any), registry *server.AgentRegistry, db *db.Queries) *API {
+type AlertController interface {
+	UpdateConfig(config alert.AlertConfig)
+}
+
+type API struct {
+	registry *server.AgentRegistry
+	db       Querier
+	alerts   AlertController
+	logf     func(f string, v ...any)
+}
+
+func NewAPI(logf func(f string, v ...any), registry *server.AgentRegistry, db Querier, alerts AlertController) *API {
 	return &API{
 		registry: registry,
 		logf:     logf,
 		db:       db,
+		alerts:   alerts,
 	}
 }
 
@@ -176,6 +192,77 @@ func (api API) UpdateAgentName(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(true)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (api API) SaveAlertConfig(w http.ResponseWriter, r *http.Request) {
+	var req shared.UpdateAlertConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	_, err := api.db.UpsertAlertConfig(r.Context(), db.UpsertAlertConfigParams{
+		ID:            1,
+		CpuThreshold:  sql.NullInt64{Int64: req.CPUThreshold, Valid: true},
+		MemThreshold:  sql.NullInt64{Int64: req.MemThreshold, Valid: true},
+		DiskThreshold: sql.NullInt64{Int64: req.DiskThreshold, Valid: true},
+		OfflineMins:   sql.NullInt64{Int64: req.OfflineThreshold, Valid: true},
+		ToleranceMins: sql.NullInt64{Int64: req.ToleranceMinutes, Valid: true},
+		WebhookUrl:    sql.NullString{String: req.WebhookURL, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "failed to save to database", http.StatusInternalServerError)
+		return
+	}
+
+	api.alerts.UpdateConfig(alert.AlertConfig{
+		CPUThreshold:     req.CPUThreshold,
+		MemThreshold:     req.MemThreshold,
+		DiskThreshold:    req.DiskThreshold,
+		OfflineMinutes:   time.Duration(req.OfflineThreshold) * time.Minute,
+		ToleranceMinutes: time.Duration(req.ToleranceMinutes) * time.Minute,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(true)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (api API) GetAlertConfig(w http.ResponseWriter, r *http.Request) {
+	config, err := api.db.GetAlertConfig(r.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			config = db.AlertConfig{
+				CpuThreshold:  sql.NullInt64{Int64: 90, Valid: true},
+				MemThreshold:  sql.NullInt64{Int64: 90, Valid: true},
+				DiskThreshold: sql.NullInt64{Int64: 90, Valid: true},
+				OfflineMins:   sql.NullInt64{Int64: 5, Valid: true},
+				ToleranceMins: sql.NullInt64{Int64: 5, Valid: true},
+			}
+		} else {
+			api.logf("GetAlertConfig error: %v", err)
+			http.Error(w, "Failed to get alert config", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err = json.NewEncoder(w).Encode(shared.GetAlertConfigResponse{
+		CPUThreshold:     config.CpuThreshold.Int64,
+		MemThreshold:     config.MemThreshold.Int64,
+		DiskThreshold:    config.DiskThreshold.Int64,
+		OfflineThreshold: config.OfflineMins.Int64,
+		ToleranceMinutes: config.ToleranceMins.Int64,
+		WebhookURL:       config.WebhookUrl.String,
+	})
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return

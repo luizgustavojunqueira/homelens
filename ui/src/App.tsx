@@ -5,6 +5,7 @@ import AgentDetails from "./pages/agentDetails/agentDetails";
 import { useEffect } from "react";
 import { connectWS } from "./services/websocket/agentSocket";
 import { ToastContainer } from "react-toastify";
+import Settings from "./pages/settings/Settings";
 
 function App() {
   useEffect(() => {
@@ -19,6 +20,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/agents/:guid" element={<AgentDetails />} />
+            <Route path="/settings/" element={<Settings />} />
           </Routes>
         </main>
       </BrowserRouter>

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"maps"
 	"sync"
 
 	"homelens/shared"
@@ -12,6 +13,7 @@ import (
 
 type AgentRegistry struct {
 	agents          map[string]*websocket.Conn
+	latestSnapshots map[string]shared.SnapshotEvent
 	subsConnections []*websocket.Conn
 	mutex           sync.RWMutex
 	subsMutex       sync.RWMutex
@@ -20,6 +22,7 @@ type AgentRegistry struct {
 func NewAgentRegistry() *AgentRegistry {
 	return &AgentRegistry{
 		agents:          make(map[string]*websocket.Conn),
+		latestSnapshots: make(map[string]shared.SnapshotEvent),
 		subsConnections: make([]*websocket.Conn, 0),
 		mutex:           sync.RWMutex{},
 		subsMutex:       sync.RWMutex{},
@@ -77,4 +80,19 @@ func (ar *AgentRegistry) Broadcast(event shared.BroadcastMessage) error {
 		}
 	}
 	return nil
+}
+
+func (ar *AgentRegistry) UpsertSnapshot(machineID string, snap shared.SnapshotEvent) {
+	ar.mutex.Lock()
+	ar.latestSnapshots[machineID] = snap
+	ar.mutex.Unlock()
+}
+
+func (ar *AgentRegistry) GetAllSnapshots() map[string]shared.SnapshotEvent {
+	ar.mutex.RLock()
+	defer ar.mutex.RUnlock()
+
+	copyMap := make(map[string]shared.SnapshotEvent)
+	maps.Copy(copyMap, ar.latestSnapshots)
+	return copyMap
 }

@@ -7,8 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"homelens/server"
+	"homelens/server/alert"
 	"homelens/server/api"
 	"homelens/server/db"
 
@@ -47,8 +50,10 @@ func run() error {
 		log.Fatal("HOMELENS_AUTH_TOKEN and HOMELENS_SERVER_ADDR environment variables must be set")
 	}
 
-	ctx := context.Background()
-	dbb, err := sql.Open("sqlite", "homelens.db")
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	dbb, err := sql.Open("sqlite", "homelens.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -61,17 +66,45 @@ func run() error {
 
 	agentRegistry := server.NewAgentRegistry()
 
+	alertEngine := alert.NewEngine(queries, agentRegistry)
+
+	go func() {
+		err := alertEngine.Start(ctx)
+		if err != nil {
+			log.Printf("err starting alert engine: %v", err)
+			cancel()
+		}
+	}()
+
 	agentServer := server.NewAgentServer(log.Printf, token, agentRegistry, queries)
 
-	api := api.NewAPI(log.Printf, agentRegistry, queries)
+	api := api.NewAPI(log.Printf, agentRegistry, queries, alertEngine)
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", agentServer)
 	mux.Handle("/", api.ServeFrontend())
-	mux.HandleFunc("/api/agents", api.GetAgents)
-	mux.HandleFunc("/api/agents/ws", api.HandleWebsocket)
-	mux.HandleFunc("/api/agents/{guid}", api.GetSnapshots)
-	mux.HandleFunc("/api/agents/update-name", api.UpdateAgentName)
+	mux.HandleFunc("GET /api/agents", api.GetAgents)
+	mux.HandleFunc("GET /api/agents/ws", api.HandleWebsocket)
+	mux.HandleFunc("GET /api/agents/{guid}", api.GetSnapshots)
+	mux.HandleFunc("POST /api/agents/update-name", api.UpdateAgentName)
+	mux.HandleFunc("POST /api/alerts", api.SaveAlertConfig)
+	mux.HandleFunc("GET /api/alerts", api.GetAlertConfig)
 
-	return http.ListenAndServe(addr, corsMiddleware(mux))
+	serverHTTP := &http.Server{
+		Addr:    addr,
+		Handler: corsMiddleware(mux),
+	}
+
+	go func() {
+		log.Printf("Server listening on %s", addr)
+		if err := serverHTTP.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("HTTP server error: %v", err)
+			cancel()
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("Shutting down gracefully...")
+
+	return serverHTTP.Close()
 }

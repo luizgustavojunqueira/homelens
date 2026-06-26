@@ -1,7 +1,10 @@
+import { toast } from "react-toastify";
 import { getAgents } from "../../api/agents";
 import {
+  AlertType,
   SnapshotType,
   StatusChangeType,
+  type AlertPayload,
   type BroadcastMessage,
   type SnapshotEvent,
   type StatusChangeEvent,
@@ -39,6 +42,16 @@ export async function connectWS() {
         useAgents
           .getState()
           .changeOnline(dataStatus.agent_guid, dataStatus.online);
+        break;
+      case AlertType:
+        const alert: AlertPayload = message.payload as AlertPayload;
+        if (alert.active) {
+          toast.error(
+            `Alert for ${alert.agent_name}. ${alert.metric} is at ${alert.value}`,
+          );
+        } else {
+          toast.success(`Alert resolved for ${alert.agent_name}.`);
+        }
         break;
     }
   };

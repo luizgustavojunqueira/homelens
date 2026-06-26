@@ -34,3 +34,18 @@ ORDER BY timestamp ASC;
 
 -- name: DeleteSnapshotsOlderThan :exec
 DELETE FROM snapshots WHERE timestamp < ?;
+
+-- name: GetAlertConfig :one
+SELECT * FROM alert_configs LIMIT 1;
+
+-- name: UpsertAlertConfig :one
+INSERT INTO alert_configs (id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    cpu_threshold = excluded.cpu_threshold,
+    mem_threshold = excluded.mem_threshold,
+    disk_threshold = excluded.disk_threshold,
+    offline_mins = excluded.offline_mins,
+    tolerance_mins = excluded.tolerance_mins,
+    webhook_url = excluded.webhook_url
+RETURNING *;

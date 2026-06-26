@@ -97,6 +97,18 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Printf("Received snapshot from agent: %s\n", machineID)
+
+		event := shared.SnapshotEvent{
+			AgentName: agent.Name.String,
+			AgentGUID: agentGUID,
+			Snapshot: shared.SnapshotEntry{
+				Timestamp: time.Now().UnixMilli(),
+				Data:      snapshot,
+			},
+		}
+
+		as.registry.UpsertSnapshot(machineID, event)
+
 		data, err := json.Marshal(snapshot)
 		if err != nil {
 			as.logf("failed to marshal snapshot: %v", err)
@@ -119,15 +131,8 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
-			Type: shared.SnapshotType,
-			Payload: shared.SnapshotEvent{
-				AgentName: agent.Name.String,
-				AgentGUID: agentGUID,
-				Snapshot: shared.SnapshotEntry{
-					Timestamp: time.Now().UnixMilli(),
-					Data:      snapshot,
-				},
-			},
+			Type:    shared.SnapshotType,
+			Payload: event,
 		})
 
 		if broadcastErr != nil {

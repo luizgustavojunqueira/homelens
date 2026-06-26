@@ -6,6 +6,7 @@
 export type EventType = string;
 export const SnapshotType: EventType = "snapshot";
 export const StatusChangeType: EventType = "status_change";
+export const AlertType: EventType = "alert";
 export interface Agent {
   guid: string;
   name: string;
@@ -40,6 +41,28 @@ export interface GetSnapshotsResponse {
 export interface UpdateNameRequest {
   name: string;
   guid: string;
+}
+export interface UpdateAlertConfigRequest {
+  cpu_threshold: number /* int64 */;
+  mem_threshold: number /* int64 */;
+  disk_threshold: number /* int64 */;
+  offline_threshold: number /* int64 */;
+  tolerance_minutes: number /* int64 */;
+  webhook_url: string;
+}
+export interface GetAlertConfigResponse {
+  cpu_threshold: number /* int64 */;
+  mem_threshold: number /* int64 */;
+  disk_threshold: number /* int64 */;
+  offline_threshold: number /* int64 */;
+  tolerance_minutes: number /* int64 */;
+  webhook_url: string;
+}
+export interface AlertPayload {
+  agent_name: string;
+  metric: string;
+  value: number /* float64 */;
+  active: boolean;
 }
 
 //////////

@@ -16,6 +16,16 @@ type Agent struct {
 	LastSeen  time.Time      `json:"last_seen"`
 }
 
+type AlertConfig struct {
+	ID            int64          `json:"id"`
+	CpuThreshold  sql.NullInt64  `json:"cpu_threshold"`
+	MemThreshold  sql.NullInt64  `json:"mem_threshold"`
+	DiskThreshold sql.NullInt64  `json:"disk_threshold"`
+	OfflineMins   sql.NullInt64  `json:"offline_mins"`
+	ToleranceMins sql.NullInt64  `json:"tolerance_mins"`
+	WebhookUrl    sql.NullString `json:"webhook_url"`
+}
+
 type Snapshot struct {
 	ID        int64     `json:"id"`
 	AgentGuid string    `json:"agent_guid"`
