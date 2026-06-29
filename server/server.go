@@ -4,7 +4,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -17,20 +16,25 @@ import (
 	"github.com/google/uuid"
 )
 
-type AgentServer struct {
-	registry *AgentRegistry
-	db       *db.Queries
-
-	logf  func(f string, v ...any)
-	token string
+type AlertCleaner interface {
+	ClearAlertsForAgent(machineID string)
 }
 
-func NewAgentServer(logf func(f string, v ...any), token string, registry *AgentRegistry, db *db.Queries) *AgentServer {
+type AgentServer struct {
+	registry     *AgentRegistry
+	db           *db.Queries
+	alertCleaner AlertCleaner
+	logf         func(f string, v ...any)
+	token        string
+}
+
+func NewAgentServer(logf func(f string, v ...any), token string, registry *AgentRegistry, db *db.Queries, alertCleaner AlertCleaner) *AgentServer {
 	return &AgentServer{
-		registry: registry,
-		logf:     logf,
-		token:    token,
-		db:       db,
+		registry:     registry,
+		logf:         logf,
+		token:        token,
+		db:           db,
+		alertCleaner: alertCleaner,
 	}
 }
 
@@ -96,8 +100,6 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			as.logf("failed to upsert agent in database: %v", err)
 		}
 
-		fmt.Printf("Received snapshot from agent: %s\n", machineID)
-
 		event := shared.SnapshotEvent{
 			AgentName: agent.Name.String,
 			AgentGUID: agentGUID,
@@ -142,6 +144,9 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !agentConnected {
+
+		as.alertCleaner.ClearAlertsForAgent(machineID)
+
 		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
 			Type: shared.StatusChangeType,
 			Payload: shared.StatusChangeEvent{

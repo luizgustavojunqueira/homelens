@@ -52,15 +52,15 @@ export default function Settings() {
   };
 
   return (
-    <section className="px-6 py-6 flex-1 overflow-y-auto max-w-screen">
+    <section className="px-6 py-6 flex-1 overflow-y-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-medium text-(--text)">Alert Settings</h2>
+        <h2 className="text-lg font-medium text-(--text)">Alert Settings</h2>
         <p className="text-(--text-dim) mt-1">
           Define the global thresholds for triggering webhook notifications.
         </p>
       </div>
 
-      <div className="border border-(--border) rounded-md bg-(--bg-elev) p-6 max-w-2xl">
+      <div className="border border-(--border) rounded-md bg-(--bg-elev) p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <TextInput

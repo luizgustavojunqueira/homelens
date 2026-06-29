@@ -225,6 +225,7 @@ func (api API) SaveAlertConfig(w http.ResponseWriter, r *http.Request) {
 		DiskThreshold:    req.DiskThreshold,
 		OfflineMinutes:   time.Duration(req.OfflineThreshold) * time.Minute,
 		ToleranceMinutes: time.Duration(req.ToleranceMinutes) * time.Minute,
+		WebhookURL:       req.WebhookURL,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
@@ -245,6 +246,7 @@ func (api API) GetAlertConfig(w http.ResponseWriter, r *http.Request) {
 				DiskThreshold: sql.NullInt64{Int64: 90, Valid: true},
 				OfflineMins:   sql.NullInt64{Int64: 5, Valid: true},
 				ToleranceMins: sql.NullInt64{Int64: 5, Valid: true},
+				WebhookUrl:    sql.NullString{},
 			}
 		} else {
 			api.logf("GetAlertConfig error: %v", err)

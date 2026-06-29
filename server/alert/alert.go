@@ -2,10 +2,15 @@
 package alert
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +33,7 @@ type AlertConfig struct {
 	DiskThreshold    int64
 	OfflineMinutes   time.Duration
 	ToleranceMinutes time.Duration
+	WebhookURL       string
 }
 
 type AlertState struct {
@@ -73,6 +79,7 @@ func (e *AlertEngine) Start(ctx context.Context) error {
 			DiskThreshold:    config.DiskThreshold.Int64,
 			OfflineMinutes:   time.Minute * time.Duration(config.OfflineMins.Int64),
 			ToleranceMinutes: time.Minute * time.Duration(config.ToleranceMins.Int64),
+			WebhookURL:       config.WebhookUrl.String,
 		}
 	}
 
@@ -95,16 +102,18 @@ func (e *AlertEngine) Start(ctx context.Context) error {
 				}
 				avgCPU := totalCPU / float64(len(snap.Data.CPU))
 
-				e.evaluateMetric(machineID, "cpu", event.AgentName, avgCPU, float64(e.configCache.CPUThreshold))
-
 				memUsed := float64(snap.Data.Memory.Used)
 				memTotal := float64(snap.Data.Memory.Total)
 				memUsagePct := (memUsed / memTotal) * 100.0
 
-				e.evaluateMetric(machineID, "mem", event.AgentName, memUsagePct, float64(e.configCache.MemThreshold))
-
 				diskUsagePct := snap.Data.Disk.DiskSpace.UsagePercent
-				e.evaluateMetric(machineID, "disk", event.AgentName, diskUsagePct, float64(e.configCache.DiskThreshold))
+
+				lastSeen := time.Since(time.UnixMilli(snap.Timestamp))
+
+				e.evaluateMetric(machineID, "CPU", event.AgentName, avgCPU, float64(e.configCache.CPUThreshold))
+				e.evaluateMetric(machineID, "MEM", event.AgentName, memUsagePct, float64(e.configCache.MemThreshold))
+				e.evaluateMetric(machineID, "DISK", event.AgentName, diskUsagePct, float64(e.configCache.DiskThreshold))
+				e.evaluateMetric(machineID, "OFFLINE", event.AgentName, lastSeen.Minutes(), e.configCache.OfflineMinutes.Minutes())
 			}
 		}
 	}
@@ -133,30 +142,71 @@ func (e *AlertEngine) evaluateMetric(machineID, metricName, agentName string, cu
 		} else if !agentState.HaveFired && time.Since(agentState.StartTime) > tolerance {
 			agentState.HaveFired = true
 
+			payload := shared.AlertPayload{
+				AgentName: agentName,
+				Metric:    metricName,
+				Value:     math.Floor(currentValue*100) / 100,
+				Active:    true,
+			}
+
 			_ = e.registry.Broadcast(shared.BroadcastMessage{
-				Type: shared.AlertType,
-				Payload: shared.AlertPayload{
-					AgentName: agentName,
-					Metric:    metricName,
-					Value:     currentValue,
-					Active:    true,
-				},
+				Type:    shared.AlertType,
+				Payload: payload,
 			})
+
+			e.triggerWebhook(payload)
 		}
 	} else {
 		if agentState, exists := e.state[stateKey]; exists {
 			if agentState.HaveFired {
+
+				payload := shared.AlertPayload{
+					AgentName: agentName,
+					Metric:    metricName,
+					Value:     math.Floor(currentValue*100) / 100,
+					Active:    false,
+				}
+
 				_ = e.registry.Broadcast(shared.BroadcastMessage{
-					Type: shared.AlertType,
-					Payload: shared.AlertPayload{
-						AgentName: agentName,
-						Metric:    metricName,
-						Value:     currentValue,
-						Active:    false,
-					},
+					Type:    shared.AlertType,
+					Payload: payload,
 				})
+
+				e.triggerWebhook(payload)
 			}
 			delete(e.state, stateKey)
+		}
+	}
+}
+
+func (e *AlertEngine) triggerWebhook(payload shared.AlertPayload) {
+	go func() {
+		if e.configCache.WebhookURL == "" {
+			return
+		}
+		client := &http.Client{Timeout: 10 * time.Second}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return
+		}
+
+		resp, err := client.Post(e.configCache.WebhookURL, "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			return
+		}
+
+		_ = resp.Body.Close()
+	}()
+}
+
+func (e *AlertEngine) ClearAlertsForAgent(machineID string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	for key := range e.state {
+		if strings.HasPrefix(key, machineID+"_") {
+			delete(e.state, key)
 		}
 	}
 }

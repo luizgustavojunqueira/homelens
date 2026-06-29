@@ -76,7 +76,7 @@ func run() error {
 		}
 	}()
 
-	agentServer := server.NewAgentServer(log.Printf, token, agentRegistry, queries)
+	agentServer := server.NewAgentServer(log.Printf, token, agentRegistry, queries, alertEngine)
 
 	api := api.NewAPI(log.Printf, agentRegistry, queries, alertEngine)
 

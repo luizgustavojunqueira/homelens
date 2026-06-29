@@ -60,7 +60,6 @@ func (ac *AgentClient) Connect() error {
 		return err
 	}
 
-	fmt.Printf("Connected to ws://%s/ws?token=%s&machine_id=%s\n", ac.addr, ac.token, ac.machineID)
 	ac.conn = c
 	return nil
 }
