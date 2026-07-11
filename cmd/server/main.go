@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"homelens/server"
 	"homelens/server/alert"
@@ -53,7 +54,16 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	dbb, err := sql.Open("sqlite", "homelens.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
+	dbPath := os.Getenv("HOMELENS_DB_PATH")
+	if dbPath == "" {
+		dbPath = "data/homelens.db"
+	}
+
+	if err := os.MkdirAll("data", 0755); err != nil {
+		log.Printf("Warning: failed to create data directory: %v", err)
+	}
+
+	dbb, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -63,6 +73,25 @@ func run() error {
 	}
 
 	queries := db.New(dbb)
+
+	// Database cleanup goroutine
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				thirtyDaysAgo := time.Now().Add(-30 * 24 * time.Hour)
+				if err := queries.DeleteSnapshotsOlderThan(context.Background(), thirtyDaysAgo); err != nil {
+					log.Printf("Error cleaning up old snapshots: %v", err)
+				} else {
+					log.Printf("Cleaned up snapshots older than %v", thirtyDaysAgo.Format(time.RFC3339))
+				}
+			}
+		}
+	}()
 
 	agentRegistry := server.NewAgentRegistry()
 
