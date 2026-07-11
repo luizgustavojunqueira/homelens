@@ -126,17 +126,24 @@ const listSnapshotsByRange = `-- name: ListSnapshotsByRange :many
 SELECT id, agent_guid, timestamp, data
 FROM snapshots
 WHERE agent_guid = ? AND timestamp >= ? AND timestamp <= ?
-ORDER BY timestamp ASC
+ORDER BY timestamp DESC
+LIMIT ?
 `
 
 type ListSnapshotsByRangeParams struct {
 	AgentGuid   string    `json:"agent_guid"`
 	Timestamp   time.Time `json:"timestamp"`
 	Timestamp_2 time.Time `json:"timestamp_2"`
+	Limit       int64     `json:"limit"`
 }
 
 func (q *Queries) ListSnapshotsByRange(ctx context.Context, arg ListSnapshotsByRangeParams) ([]Snapshot, error) {
-	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange, arg.AgentGuid, arg.Timestamp, arg.Timestamp_2)
+	rows, err := q.db.QueryContext(ctx, listSnapshotsByRange,
+		arg.AgentGuid,
+		arg.Timestamp,
+		arg.Timestamp_2,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +216,12 @@ const upsertAlertConfig = `-- name: UpsertAlertConfig :one
 INSERT INTO alert_configs (id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
-    id = excluded.id
+    cpu_threshold = excluded.cpu_threshold,
+    mem_threshold = excluded.mem_threshold,
+    disk_threshold = excluded.disk_threshold,
+    offline_mins = excluded.offline_mins,
+    tolerance_mins = excluded.tolerance_mins,
+    webhook_url = excluded.webhook_url
 RETURNING id, cpu_threshold, mem_threshold, disk_threshold, offline_mins, tolerance_mins, webhook_url
 `
 

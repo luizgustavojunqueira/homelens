@@ -30,7 +30,8 @@ LIMIT 1;
 SELECT id, agent_guid, timestamp, data
 FROM snapshots
 WHERE agent_guid = ? AND timestamp >= ? AND timestamp <= ?
-ORDER BY timestamp ASC;
+ORDER BY timestamp DESC
+LIMIT ?;
 
 -- name: DeleteSnapshotsOlderThan :exec
 DELETE FROM snapshots WHERE timestamp < ?;

@@ -74,7 +74,6 @@ func run() error {
 
 	queries := db.New(dbb)
 
-	// Database cleanup goroutine
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()

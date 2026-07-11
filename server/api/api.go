@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,10 +96,22 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 	agentGUID := r.PathValue("guid")
 
+	limitStr := r.URL.Query().Get("limit")
+	limit := 5000
+	if limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 5000 {
+		limit = 5000
+	}
+
 	rows, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
 		AgentGuid:   agentGUID,
 		Timestamp:   time.Now().Add(-24 * time.Hour),
 		Timestamp_2: time.Now(),
+		Limit:       int64(limit),
 	})
 	if err != nil {
 		api.logf("ListSnapshotsByRange error: %v", err)
@@ -112,6 +125,10 @@ func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 			Timestamp: row.Timestamp.UnixMilli(),
 			Data:      []byte(row.Data),
 		})
+	}
+
+	for i, j := 0, len(entries)-1; i < j; i, j = i+1, j-1 {
+		entries[i], entries[j] = entries[j], entries[i]
 	}
 
 	w.Header().Set("Content-Type", "application/json")
