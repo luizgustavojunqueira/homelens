@@ -1,30 +1,41 @@
-import { Icon } from "@iconify/react";
+import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { Agent } from "../../../api/models";
 import Tooltip from "../../../components/tooltip";
 import MetricBar from "../../../components/metricBar";
 import { formatByteStr } from "../../../utils";
 import NetworkUsage from "../../../components/networkUsage";
+import { useAgents } from "../../../store/agentsStore";
 
-export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
+export function AgentCard({ guid }: { guid: string }) {
   const navigate = useNavigate();
-  const snap = latest_snapshot.data;
-  const cpuPct =
-    snap.cpu.reduce((cum, curr) => cum + curr.usage_percent, 0) /
-    snap.cpu.length;
-  const memUsed = (snap.memory.used ?? 0) * 1024;
-  const memTotal = (snap.memory.total ?? 0) * 1024;
-  const memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
-  const diskPct = snap.disk.disk_space.usage_percent;
-  const temp = snap.temperature
-    ? snap.temperature.reduce((cum, curr) => cum + curr.temp_c, 0) /
-      snap.temperature.length
-    : 0;
+  const agent = useAgents((state) => state.agents[guid]);
 
-  const totalNetRx =
-    snap.network.reduce((sum, net) => sum + net.rx_bps, 0) ?? 0;
-  const totalNetTx =
-    snap.network.reduce((sum, net) => sum + net.tx_bps, 0) ?? 0;
+  if (!agent) return null;
+
+  const { name, online, latest_snapshot } = agent;
+  const snap = latest_snapshot?.data;
+
+  let cpuPct = 0;
+  let memPct = 0;
+  let diskPct = 0;
+  let temp = 0;
+  let totalNetRx = 0;
+  let totalNetTx = 0;
+
+  if (snap) {
+    cpuPct = snap.cpu.length > 0
+      ? snap.cpu.reduce((cum, curr) => cum + curr.usage_percent, 0) / snap.cpu.length
+      : 0;
+    const memUsed = (snap.memory?.used ?? 0) * 1024;
+    const memTotal = (snap.memory?.total ?? 0) * 1024;
+    memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
+    diskPct = snap.disk?.disk_space?.usage_percent || 0;
+    temp = snap.temperature && snap.temperature.length > 0
+      ? snap.temperature.reduce((cum, curr) => cum + curr.temp_c, 0) / snap.temperature.length
+      : 0;
+    totalNetRx = snap.network?.reduce((sum, net) => sum + net.rx_bps, 0) || 0;
+    totalNetTx = snap.network?.reduce((sum, net) => sum + net.tx_bps, 0) || 0;
+  }
 
   return (
     <div
@@ -67,8 +78,8 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                   <strong>Detailed MEM Usage</strong>
                 </div>
                 <span>
-                  {formatByteStr(snap.memory.used, "KB")} /{" "}
-                  {formatByteStr(snap.memory.total, "KB")}
+                  {formatByteStr(snap.memory?.used ?? 0, "KB")} /{" "}
+                  {formatByteStr(snap.memory?.total ?? 0, "KB")}
                 </span>
               </div>
             }
@@ -83,12 +94,12 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                   <strong>Detailed DISK Usage</strong>
                 </div>
                 <span>
-                  {formatByteStr(snap.disk.disk_space.used)} /{" "}
-                  {formatByteStr(snap.disk.disk_space.total)}
+                  {formatByteStr(snap.disk?.disk_space?.used ?? 0)} /{" "}
+                  {formatByteStr(snap.disk?.disk_space?.total ?? 0)}
                 </span>
                 <hr className="my-2 border-(--border)" />
                 <div className="text-left">
-                  {snap.disk.disk_io_usage.map(
+                  {snap.disk?.disk_io_usage?.map(
                     ({ name, read_mbps, write_mbps }, index) => (
                       <div
                         key={`${name}-${index}`}
@@ -134,7 +145,7 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
                 <div>
                   <strong>Detailed NET Usage</strong>
                 </div>
-                {snap.network.map(({ name, rx_bps, tx_bps }, index) => (
+                {snap.network?.map(({ name, rx_bps, tx_bps }, index) => (
                   <NetworkUsage
                     key={`${name}-${index}`}
                     name={name}
@@ -153,8 +164,7 @@ export function AgentCard({ guid, name, online, latest_snapshot }: Agent) {
         <div className="col-span-4 text-sm text-(--text-faint)">no data</div>
       )}
 
-      <Icon
-        icon="lucide:chevron-right"
+      <ChevronRight
         width="16"
         className="text-(--text-faint)"
       />
