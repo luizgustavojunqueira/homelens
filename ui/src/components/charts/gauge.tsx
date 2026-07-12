@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import ReactECharts from "echarts-for-react";
+import { useMemo } from "react";
 
 interface IGauge {
   value: number;
@@ -9,6 +10,15 @@ interface IGauge {
   total?: string;
 }
 
+const escapeHtml = (unsafe: string) => {
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export default function Gauge({
   value,
   symbol = "%",
@@ -16,7 +26,7 @@ export default function Gauge({
   used,
   total,
 }: IGauge) {
-  const option: EChartsOption = {
+  const option: EChartsOption = useMemo(() => ({
     backgroundColor: "transparent",
 
     animationDuration: 800,
@@ -35,18 +45,18 @@ export default function Gauge({
         if (used !== undefined && total !== undefined) {
           return `
             <div style="font-weight:600;margin-bottom:4px">
-              ${label}
+              ${escapeHtml(label)}
             </div>
             <div style="opacity:0.8">
-              ${used} / ${total}
+              ${escapeHtml(String(used))} / ${escapeHtml(String(total))}
             </div>
           `;
         }
         return `
           <div style="font-weight:600">
-            ${label}
+            ${escapeHtml(label)}
           </div>
-          <div>${value.toFixed(1)}${symbol}</div>
+          <div>${value.toFixed(1)}${escapeHtml(symbol)}</div>
         `;
       },
       position: (point) => {
@@ -120,7 +130,7 @@ export default function Gauge({
         ],
       },
     ],
-  };
+  }), [value, symbol, label, used, total]);
 
   return (
     <ReactECharts
