@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { Agent, SnapshotEntry } from "../api/models";
 
+const MAX_HISTORY = 500;
+
 type AgentState = Agent & {
   history: SnapshotEntry[];
 };
@@ -8,7 +10,6 @@ type AgentState = Agent & {
 interface AgentsStore {
   agents: Record<string, AgentState>;
   appendSnapshot: (guid: string, snapshot: SnapshotEntry, name: string) => void;
-  getAgentState: (guid: string) => AgentState | undefined;
   insertHistory: (guid: string, snapshots: SnapshotEntry[]) => void;
   changeOnline: (guid: string, online: boolean) => void;
 }
@@ -20,11 +21,7 @@ export const useAgents = create<AgentsStore>((set) => ({
       const agentState: AgentState = state.agents[guid];
 
       if (!agentState) {
-        return {
-          agents: {
-            ...state.agents,
-          },
-        };
+        return state;
       }
       return {
         agents: {
@@ -60,7 +57,7 @@ export const useAgents = create<AgentsStore>((set) => ({
         };
       }
 
-      const updatedHistory = [...agentState.history, snapshot];
+      const updatedHistory = [...agentState.history, snapshot].slice(-MAX_HISTORY);
       return {
         agents: {
           ...state.agents,
@@ -76,10 +73,6 @@ export const useAgents = create<AgentsStore>((set) => ({
       };
     });
   },
-  getAgentState: (guid: string) => {
-    const agentState: AgentState = useAgents.getState().agents[guid];
-    return agentState;
-  },
   insertHistory: (guid: string, snapshots: SnapshotEntry[]) => {
     set((state) => {
       const currentOldest = state.agents[guid]?.history[0];
@@ -89,12 +82,15 @@ export const useAgents = create<AgentsStore>((set) => ({
       });
       const agentState: AgentState = state.agents[guid];
       if (!agentState) return state;
+      
+      const newHistory = [...filtered, ...agentState.history].slice(-MAX_HISTORY);
+      
       return {
         agents: {
           ...state.agents,
           [guid]: {
             ...agentState,
-            history: [...filtered, ...agentState.history],
+            history: newHistory,
           },
         },
       };
