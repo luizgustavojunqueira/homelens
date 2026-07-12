@@ -2,18 +2,30 @@ package client
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"homelens/shared"
 )
 
 func Collect(ctx context.Context, interval time.Duration, out chan<- shared.SystemInfo) error {
+	procCollector := newProcessCollector()
+
+	prevCPUTime, err := readCPUTime()
+	if err != nil {
+		return err
+	}
+	prevDiskIO, err := readDiskIO()
+	if err != nil {
+		return err
+	}
+	prevNetInfo, err := readNetInfo()
+	if err != nil {
+		return err
+	}
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-
-	var prevCPUTime []CPUTime
-	var prevDiskIO []DiskIO
-	var prevNetInfo []NetInfo
 
 	for {
 		select {
@@ -23,31 +35,19 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 		case <-ticker.C:
 			currentCPUTime, err := readCPUTime()
 			if err != nil {
-				return err
+				log.Printf("warning: failed to read CPU: %v", err)
+				continue
 			}
 
 			currentDiskIO, err := readDiskIO()
 			if err != nil {
-				return err
+				log.Printf("warning: failed to read disk IO: %v", err)
+				continue
 			}
 
 			currentNetInfo, err := readNetInfo()
 			if err != nil {
-				return err
-			}
-
-			if prevCPUTime == nil {
-				prevCPUTime = currentCPUTime
-				continue
-			}
-
-			if prevDiskIO == nil {
-				prevDiskIO = currentDiskIO
-				continue
-			}
-
-			if prevNetInfo == nil {
-				prevNetInfo = currentNetInfo
+				log.Printf("warning: failed to read network info: %v", err)
 				continue
 			}
 
@@ -57,7 +57,8 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 
 			diskSpace, err := readDiskSpace("/")
 			if err != nil {
-				return err
+				log.Printf("warning: failed to read disk space: %v", err)
+				continue
 			}
 			sysInfo.Disk = shared.Disk{
 				DiskIOUsage: calcDiskIOUsage(prevDiskIO, currentDiskIO, interval),
@@ -68,14 +69,15 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 
 			sysInfo.Memory, err = readMemoryUsage()
 			if err != nil {
-				return err
+				log.Printf("warning: failed to read memory: %v", err)
+				continue
 			}
 
 			sysInfo.Temperature = readTempInfo()
 
 			sysInfo.Containers = readDockerContainers()
 
-			sysInfo.Processes = readTopProcesses()
+			sysInfo.Processes = procCollector.readTopProcesses()
 
 			prevCPUTime = currentCPUTime
 			prevDiskIO = currentDiskIO

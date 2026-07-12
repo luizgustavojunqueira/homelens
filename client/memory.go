@@ -10,30 +10,32 @@ import (
 )
 
 func readMemoryUsage() (shared.Memory, error) {
-	memInfo := shared.Memory{}
-
 	stat, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return memInfo, err
+		return shared.Memory{}, err
 	}
+
+	var memInfo shared.Memory
 
 	scanner := bufio.NewScanner(strings.NewReader(string(stat)))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "MemTotal:") {
-			fmt.Sscanf(line, "MemTotal: %d kB", &memInfo.Total)
-		} else if strings.HasPrefix(line, "MemAvailable:") {
-			fmt.Sscanf(line, "MemAvailable: %d kB", &memInfo.Available)
-		}
-
-		if memInfo.Total != 0 && memInfo.Available != 0 {
-			memInfo.Used = memInfo.Total - memInfo.Available
+		var val uint64
+		switch {
+		case strings.HasPrefix(line, "MemTotal:"):
+			if n, err := fmt.Sscanf(line, "MemTotal: %d kB", &val); n == 1 && err == nil {
+				memInfo.Total = val * 1024
+			}
+		case strings.HasPrefix(line, "MemAvailable:"):
+			if n, err := fmt.Sscanf(line, "MemAvailable: %d kB", &val); n == 1 && err == nil {
+				memInfo.Available = val * 1024
+			}
 		}
 	}
 
-	return memInfo, nil
-}
+	if memInfo.Total > 0 && memInfo.Available <= memInfo.Total {
+		memInfo.Used = memInfo.Total - memInfo.Available
+	}
 
-func ConvertKBToGB(kb uint64) float64 {
-	return float64(kb) / (1024 * 1024)
+	return memInfo, nil
 }

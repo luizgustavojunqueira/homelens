@@ -15,10 +15,10 @@ import (
 const sectorToMB = 512.0 / (1024.0 * 1024.0)
 
 type DiskIO struct {
-	Name           string `json:"name"`
-	SectorsRead    uint64 `json:"sectors_read"`
-	SectorsWritten uint64 `json:"sectors_written"`
-	IOMs           uint64 `json:"io_ms"`
+	Name           string
+	SectorsRead    uint64
+	SectorsWritten uint64
+	IOMs           uint64
 }
 
 func readDiskSpace(path string) (shared.DiskSpace, error) {
@@ -28,12 +28,17 @@ func readDiskSpace(path string) (shared.DiskSpace, error) {
 		return shared.DiskSpace{}, err
 	}
 
+	var usagePercent float64
+	if stat.Blocks > 0 {
+		usagePercent = float64(stat.Blocks-stat.Bavail) / float64(stat.Blocks) * 100
+	}
+
 	return shared.DiskSpace{
 		Path:         path,
 		Total:        stat.Blocks * uint64(stat.Bsize),
 		Available:    stat.Bavail * uint64(stat.Bsize),
 		Used:         (stat.Blocks - stat.Bavail) * uint64(stat.Bsize),
-		UsagePercent: float64(stat.Blocks-stat.Bavail) / float64(stat.Blocks) * 100,
+		UsagePercent: usagePercent,
 	}, nil
 }
 
@@ -72,10 +77,21 @@ func readDiskIO() ([]DiskIO, error) {
 
 func calcDiskIOUsage(prev, current []DiskIO, interval time.Duration) []shared.DiskIOUsage {
 	secs := interval.Seconds()
-	var results []shared.DiskIOUsage
+	if secs == 0 {
+		return nil
+	}
 
-	for i, c := range current {
-		p := prev[i]
+	prevByName := make(map[string]DiskIO, len(prev))
+	for _, p := range prev {
+		prevByName[p.Name] = p
+	}
+
+	var results []shared.DiskIOUsage
+	for _, c := range current {
+		p, ok := prevByName[c.Name]
+		if !ok {
+			continue
+		}
 
 		results = append(results, shared.DiskIOUsage{
 			Name:      c.Name,
@@ -86,8 +102,4 @@ func calcDiskIOUsage(prev, current []DiskIO, interval time.Duration) []shared.Di
 	}
 
 	return results
-}
-
-func ConvertBytesToGB(bytes uint64) float64 {
-	return float64(bytes) / (1024 * 1024 * 1024)
 }

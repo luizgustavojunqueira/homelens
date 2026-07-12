@@ -97,7 +97,7 @@ func (h hwmonStrategy) Read() []shared.Temperature {
 			baseName := filepath.Base(inputPath)
 			prefix := strings.TrimSuffix(baseName, "_input")
 			label := componentName + "_" + prefix
-			if labelData, err := os.ReadFile(filepath.Join(basePath, prefix+"label")); err == nil {
+			if labelData, err := os.ReadFile(filepath.Join(basePath, prefix+"_label")); err == nil {
 				label = componentName + "_" + strings.TrimSpace(string(labelData))
 			}
 

@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,11 @@ import (
 	"homelens/server/db"
 	"homelens/shared"
 )
+
+const alertCheckInterval = 10 * time.Second
+
+// webhookClient is shared across all webhook calls to enable connection reuse.
+var webhookClient = &http.Client{Timeout: 10 * time.Second}
 
 type AgentRegistry interface {
 	GetAllSnapshots() map[string]shared.SnapshotEvent
@@ -54,7 +61,6 @@ func NewEngine(store Querier, registry AgentRegistry) *AlertEngine {
 		store:    store,
 		registry: registry,
 		state:    make(map[string]*AlertState),
-		mu:       sync.RWMutex{},
 	}
 }
 
@@ -83,7 +89,7 @@ func (e *AlertEngine) Start(ctx context.Context) error {
 		}
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(alertCheckInterval)
 	defer ticker.Stop()
 
 	for {
@@ -92,28 +98,37 @@ func (e *AlertEngine) Start(ctx context.Context) error {
 			return ctx.Err()
 
 		case <-ticker.C:
+			e.mu.RLock()
+			cfg := e.configCache
+			e.mu.RUnlock()
+
 			currentSnapshots := e.registry.GetAllSnapshots()
 
 			for machineID, event := range currentSnapshots {
 				snap := event.Snapshot
-				var totalCPU float64
-				for _, item := range snap.Data.CPU {
-					totalCPU += item.UsagePercent
-				}
-				avgCPU := totalCPU / float64(len(snap.Data.CPU))
 
-				memUsed := float64(snap.Data.Memory.Used)
-				memTotal := float64(snap.Data.Memory.Total)
-				memUsagePct := (memUsed / memTotal) * 100.0
+				var avgCPU float64
+				if len(snap.Data.CPU) > 0 {
+					var totalCPU float64
+					for _, item := range snap.Data.CPU {
+						totalCPU += item.UsagePercent
+					}
+					avgCPU = totalCPU / float64(len(snap.Data.CPU))
+				}
+
+				var memUsagePct float64
+				if snap.Data.Memory.Total > 0 {
+					memUsagePct = (float64(snap.Data.Memory.Used) / float64(snap.Data.Memory.Total)) * 100.0
+				}
 
 				diskUsagePct := snap.Data.Disk.DiskSpace.UsagePercent
 
 				lastSeen := time.Since(time.UnixMilli(snap.Timestamp))
 
-				e.evaluateMetric(machineID, "CPU", event.AgentName, avgCPU, float64(e.configCache.CPUThreshold))
-				e.evaluateMetric(machineID, "MEM", event.AgentName, memUsagePct, float64(e.configCache.MemThreshold))
-				e.evaluateMetric(machineID, "DISK", event.AgentName, diskUsagePct, float64(e.configCache.DiskThreshold))
-				e.evaluateMetric(machineID, "OFFLINE", event.AgentName, lastSeen.Minutes(), e.configCache.OfflineMinutes.Minutes())
+				e.evaluateMetric(machineID, "CPU", event.AgentName, avgCPU, float64(cfg.CPUThreshold), cfg)
+				e.evaluateMetric(machineID, "MEM", event.AgentName, memUsagePct, float64(cfg.MemThreshold), cfg)
+				e.evaluateMetric(machineID, "DISK", event.AgentName, diskUsagePct, float64(cfg.DiskThreshold), cfg)
+				e.evaluateMetric(machineID, "OFFLINE", event.AgentName, lastSeen.Minutes(), cfg.OfflineMinutes.Minutes(), cfg)
 			}
 		}
 	}
@@ -125,12 +140,14 @@ func (e *AlertEngine) UpdateConfig(config AlertConfig) {
 	e.configCache = config
 }
 
-func (e *AlertEngine) evaluateMetric(machineID, metricName, agentName string, currentValue, threshold float64) {
+func (e *AlertEngine) evaluateMetric(machineID, metricName, agentName string, currentValue, threshold float64, cfg AlertConfig) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 
 	stateKey := fmt.Sprintf("%s_%s", machineID, metricName)
-	tolerance := e.configCache.ToleranceMinutes
+	tolerance := cfg.ToleranceMinutes
+
+	var broadcastMsg *shared.BroadcastMessage
+	var webhookPayload *shared.AlertPayload
 
 	if currentValue > threshold {
 		agentState := e.state[stateKey]
@@ -142,57 +159,76 @@ func (e *AlertEngine) evaluateMetric(machineID, metricName, agentName string, cu
 		} else if !agentState.HaveFired && time.Since(agentState.StartTime) > tolerance {
 			agentState.HaveFired = true
 
-			payload := shared.AlertPayload{
+			p := shared.AlertPayload{
 				AgentName: agentName,
 				Metric:    metricName,
 				Value:     math.Floor(currentValue*100) / 100,
 				Active:    true,
 			}
-
-			_ = e.registry.Broadcast(shared.BroadcastMessage{
-				Type:    shared.AlertType,
-				Payload: payload,
-			})
-
-			e.triggerWebhook(payload)
+			broadcastMsg = &shared.BroadcastMessage{Type: shared.AlertType, Payload: p}
+			webhookPayload = &p
 		}
 	} else {
 		if agentState, exists := e.state[stateKey]; exists {
 			if agentState.HaveFired {
-
-				payload := shared.AlertPayload{
+				p := shared.AlertPayload{
 					AgentName: agentName,
 					Metric:    metricName,
 					Value:     math.Floor(currentValue*100) / 100,
 					Active:    false,
 				}
-
-				_ = e.registry.Broadcast(shared.BroadcastMessage{
-					Type:    shared.AlertType,
-					Payload: payload,
-				})
-
-				e.triggerWebhook(payload)
+				broadcastMsg = &shared.BroadcastMessage{Type: shared.AlertType, Payload: p}
+				webhookPayload = &p
 			}
 			delete(e.state, stateKey)
 		}
 	}
+
+	e.mu.Unlock()
+
+	if broadcastMsg != nil {
+		if err := e.registry.Broadcast(*broadcastMsg); err != nil {
+			log.Printf("failed to broadcast alert for %s/%s: %v", machineID, metricName, err)
+		}
+	}
+	if webhookPayload != nil {
+		e.triggerWebhook(cfg.WebhookURL, *webhookPayload)
+	}
 }
 
-func (e *AlertEngine) triggerWebhook(payload shared.AlertPayload) {
+func ValidateWebhookURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("webhook URL must use http or https scheme, got %q", parsed.Scheme)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("webhook URL must have a host")
+	}
+	return nil
+}
+
+func (e *AlertEngine) triggerWebhook(webhookURL string, payload shared.AlertPayload) {
+	if webhookURL == "" {
+		return
+	}
 	go func() {
-		if e.configCache.WebhookURL == "" {
+		if err := ValidateWebhookURL(webhookURL); err != nil {
+			log.Printf("invalid webhook URL: %v", err)
 			return
 		}
-		client := &http.Client{Timeout: 10 * time.Second}
 
 		body, err := json.Marshal(payload)
 		if err != nil {
+			log.Printf("failed to marshal webhook payload: %v", err)
 			return
 		}
 
-		resp, err := client.Post(e.configCache.WebhookURL, "application/json", bytes.NewBuffer(body))
+		resp, err := webhookClient.Post(webhookURL, "application/json", bytes.NewBuffer(body))
 		if err != nil {
+			log.Printf("webhook request failed: %v", err)
 			return
 		}
 

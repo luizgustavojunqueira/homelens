@@ -42,7 +42,7 @@ func readCPUTime() ([]CPUTime, error) {
 		}
 
 		var info CPUTime
-		fmt.Sscanf(
+		n, err := fmt.Sscanf(
 			line, "%s %d %d %d %d %d %d %d %d %d %d",
 			&info.Name,
 			&info.User,
@@ -56,6 +56,9 @@ func readCPUTime() ([]CPUTime, error) {
 			&info.Guest,
 			&info.GuestNice,
 		)
+		if err != nil || n < 5 {
+			continue
+		}
 		cpus = append(cpus, info)
 	}
 
@@ -63,13 +66,23 @@ func readCPUTime() ([]CPUTime, error) {
 }
 
 func getCPU(oldSamples []CPUTime, newSamples []CPUTime) []shared.CPU {
-	var cpuInfos []shared.CPU
-	for i, sample := range newSamples {
+	prevByName := make(map[string]CPUTime, len(oldSamples))
+	for _, s := range oldSamples {
+		prevByName[s.Name] = s
+	}
 
-		prev := oldSamples[i]
+	var cpuInfos []shared.CPU
+	for _, sample := range newSamples {
+		prev, ok := prevByName[sample.Name]
+		if !ok {
+			continue
+		}
 
 		idle := sample.Idle - prev.Idle
 		total := sample.Total() - prev.Total()
+		if total == 0 {
+			continue
+		}
 
 		cpuInfos = append(cpuInfos, shared.CPU{
 			Name:         sample.Name,

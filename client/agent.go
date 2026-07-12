@@ -4,6 +4,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -52,9 +53,13 @@ func (ac *AgentClient) Connect() error {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-
 	defer cancel()
-	c, _, err := websocket.Dial(ctx, "ws://"+ac.addr+"/ws?token="+ac.token+"&machine_id="+ac.machineID, nil)
+
+	c, _, err := websocket.Dial(ctx, "ws://"+ac.addr+"/ws?machine_id="+ac.machineID, &websocket.DialOptions{
+		HTTPHeader: http.Header{
+			"Authorization": {"Bearer " + ac.token},
+		},
+	})
 	if err != nil {
 		ac.logf("websocket dial error: %v", err)
 		return err
@@ -83,7 +88,9 @@ func (ac *AgentClient) SendSnapshot(snapshot shared.SystemInfo) error {
 	if ac.conn == nil {
 		return fmt.Errorf("websocket connection is nil, cannot send snapshot")
 	}
-	return wsjson.Write(context.Background(), ac.conn, snapshot)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return wsjson.Write(ctx, ac.conn, snapshot)
 }
 
 func (ac *AgentClient) Run(ctx context.Context, interval time.Duration) error {
@@ -93,7 +100,8 @@ func (ac *AgentClient) Run(ctx context.Context, interval time.Duration) error {
 		return err
 	}
 
-	out := make(chan shared.SystemInfo)
+	// Buffered so Collect never blocks when the main loop is busy reconnecting.
+	out := make(chan shared.SystemInfo, 1)
 	go func() {
 		if err := Collect(ctx, interval, out); err != nil {
 			ac.logf("Error on collect routine: %v", err)
@@ -103,7 +111,7 @@ func (ac *AgentClient) Run(ctx context.Context, interval time.Duration) error {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Shutting down...")
+			ac.logf("shutting down agent %s", ac.machineID)
 			ac.Disconnect()
 			return nil
 		case snapshot := <-out:

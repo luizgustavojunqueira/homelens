@@ -20,11 +20,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func corsMiddleware(next http.Handler) http.Handler {
+func corsMiddleware(allowedOrigin string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -32,6 +32,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+const snapshotRetentionDuration = 30 * 24 * time.Hour
 
 func main() {
 	if err := run(); err != nil {
@@ -51,6 +53,11 @@ func run() error {
 		log.Fatal("HOMELENS_AUTH_TOKEN and HOMELENS_SERVER_ADDR environment variables must be set")
 	}
 
+	corsOrigin := os.Getenv("HOMELENS_CORS_ORIGIN")
+	if corsOrigin == "" {
+		corsOrigin = "*"
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -59,7 +66,7 @@ func run() error {
 		dbPath = "data/homelens.db"
 	}
 
-	if err := os.MkdirAll("data", 0755); err != nil {
+	if err := os.MkdirAll("data", 0o755); err != nil {
 		log.Printf("Warning: failed to create data directory: %v", err)
 	}
 
@@ -67,6 +74,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+	defer dbb.Close()
 
 	if _, err := dbb.ExecContext(ctx, db.Schema); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
@@ -82,11 +90,11 @@ func run() error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				thirtyDaysAgo := time.Now().Add(-30 * 24 * time.Hour)
-				if err := queries.DeleteSnapshotsOlderThan(context.Background(), thirtyDaysAgo); err != nil {
+				cutoff := time.Now().Add(-snapshotRetentionDuration)
+				if err := queries.DeleteSnapshotsOlderThan(ctx, cutoff); err != nil {
 					log.Printf("Error cleaning up old snapshots: %v", err)
 				} else {
-					log.Printf("Cleaned up snapshots older than %v", thirtyDaysAgo.Format(time.RFC3339))
+					log.Printf("Cleaned up snapshots older than %v", cutoff.Format(time.RFC3339))
 				}
 			}
 		}
@@ -110,7 +118,13 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", agentServer)
-	mux.Handle("/", api.ServeFrontend())
+
+	frontendHandler, err := api.ServeFrontend()
+	if err != nil {
+		return fmt.Errorf("frontend init: %w", err)
+	}
+	mux.Handle("/", frontendHandler)
+
 	mux.HandleFunc("GET /api/agents", api.GetAgents)
 	mux.HandleFunc("GET /api/agents/ws", api.HandleWebsocket)
 	mux.HandleFunc("GET /api/agents/{guid}", api.GetSnapshots)
@@ -119,8 +133,10 @@ func run() error {
 	mux.HandleFunc("GET /api/alerts", api.GetAlertConfig)
 
 	serverHTTP := &http.Server{
-		Addr:    addr,
-		Handler: corsMiddleware(mux),
+		Addr:              addr,
+		Handler:           corsMiddleware(corsOrigin, mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	go func() {
@@ -134,5 +150,8 @@ func run() error {
 	<-ctx.Done()
 	log.Println("Shutting down gracefully...")
 
-	return serverHTTP.Close()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	return serverHTTP.Shutdown(shutdownCtx)
 }

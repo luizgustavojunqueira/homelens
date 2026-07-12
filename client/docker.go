@@ -7,11 +7,21 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"homelens/shared"
 )
 
-const socketPath = "/var/run/docker.sock"
+const dockerSocketPath = "/var/run/docker.sock"
+
+var dockerClient = &http.Client{
+	Timeout: 5 * time.Second,
+	Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
+			return net.Dial("unix", dockerSocketPath)
+		},
+	},
+}
 
 type DockerContainerRead struct {
 	Names  []string
@@ -26,19 +36,11 @@ type DockerContainerRead struct {
 }
 
 func readDockerContainers() []shared.DockerContainer {
-	if _, err := os.Stat(socketPath); os.IsNotExist(err) {
+	if _, err := os.Stat(dockerSocketPath); os.IsNotExist(err) {
 		return nil
 	}
 
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketPath)
-			},
-		},
-	}
-
-	resp, err := httpc.Get("http://localhost/containers/json")
+	resp, err := dockerClient.Get("http://localhost/containers/json")
 	if err != nil {
 		return nil
 	}

@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,8 +51,8 @@ func NewAPI(logf func(f string, v ...any), registry *server.AgentRegistry, db Qu
 	}
 }
 
-func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
-	agents, err := api.db.ListAgents(context.Background())
+func (api *API) GetAgents(w http.ResponseWriter, r *http.Request) {
+	agents, err := api.db.ListAgents(r.Context())
 	if err != nil {
 		http.Error(w, "Failed to list agents", http.StatusInternalServerError)
 		return
@@ -61,7 +61,7 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 	agentsResult := make([]shared.Agent, len(agents))
 	for i, agent := range agents {
 
-		agentLatestSnapshot, err := api.db.GetLatestSnapshot(context.Background(), agent.Guid)
+		agentLatestSnapshot, err := api.db.GetLatestSnapshot(r.Context(), agent.Guid)
 		if err != nil {
 			api.logf("GetLatestSnapshot error: %v", err)
 			http.Error(w, "Failed to get latest snapshot", http.StatusInternalServerError)
@@ -86,28 +86,28 @@ func (api API) GetAgents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(agentsResult)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(agentsResult); err != nil {
+		api.logf("failed to encode agents response: %v", err)
 	}
 }
 
-func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
+const maxSnapshotLimit = 5000
+
+func (api *API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 	agentGUID := r.PathValue("guid")
 
 	limitStr := r.URL.Query().Get("limit")
-	limit := 5000
+	limit := maxSnapshotLimit
 	if limitStr != "" {
 		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
 			limit = parsed
 		}
 	}
-	if limit > 5000 {
-		limit = 5000
+	if limit > maxSnapshotLimit {
+		limit = maxSnapshotLimit
 	}
 
-	rows, err := api.db.ListSnapshotsByRange(context.Background(), db.ListSnapshotsByRangeParams{
+	rows, err := api.db.ListSnapshotsByRange(r.Context(), db.ListSnapshotsByRangeParams{
 		AgentGuid:   agentGUID,
 		Timestamp:   time.Now().Add(-24 * time.Hour),
 		Timestamp_2: time.Now(),
@@ -132,14 +132,12 @@ func (api API) GetSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(shared.GetSnapshotsResponse{Snapshots: entries})
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(shared.GetSnapshotsResponse{Snapshots: entries}); err != nil {
+		api.logf("failed to encode snapshots response: %v", err)
 	}
 }
 
-func (api API) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
+func (api *API) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		InsecureSkipVerify: true,
 	})
@@ -152,25 +150,48 @@ func (api API) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	api.logf("websocket client connected: %s", r.RemoteAddr)
 
 	api.registry.Subscribe(c)
+	defer api.registry.Unsubscribe(c)
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+				if err := c.Ping(pingCtx); err != nil {
+					api.logf("frontend ws %s ping failed: %v", r.RemoteAddr, err)
+					pingCancel()
+					cancel()
+					return
+				}
+				pingCancel()
+			}
+		}
+	}()
 
 	for {
-		_, _, err := c.Read(context.Background())
+		_, _, err := c.Read(ctx)
 		if err != nil {
 			if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
 				api.logf("websocket client disconnected: %s", r.RemoteAddr)
 			} else {
 				api.logf("websocket read error: %v", err)
 			}
-			api.registry.Unsubscribe(c)
 			break
 		}
 	}
 }
 
-func (api API) ServeFrontend() http.Handler {
+func (api *API) ServeFrontend() (http.Handler, error) {
 	strippedFS, err := fs.Sub(ui.Assets, "dist")
 	if err != nil {
-		log.Fatal("erro ao ler o frontend embutido:", err)
+		return nil, fmt.Errorf("failed to read embedded frontend: %w", err)
 	}
 
 	fileServer := http.FileServer(http.FS(strippedFS))
@@ -187,39 +208,68 @@ func (api API) ServeFrontend() http.Handler {
 		}
 
 		fileServer.ServeHTTP(w, r)
-	})
+	}), nil
 }
 
-func (api API) UpdateAgentName(w http.ResponseWriter, r *http.Request) {
+const maxRequestBodySize = 1 << 20 // 1 MB
+
+func (api *API) UpdateAgentName(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var updateNameRequest shared.UpdateNameRequest
 	err := json.NewDecoder(r.Body).Decode(&updateNameRequest)
 	if err != nil {
-		http.Error(w, "Failed to decode response", http.StatusBadRequest)
+		http.Error(w, "Failed to decode request body", http.StatusBadRequest)
 		return
 	}
 
-	err = api.db.UpdateAgentName(context.Background(), db.UpdateAgentNameParams{
+	err = api.db.UpdateAgentName(r.Context(), db.UpdateAgentNameParams{
 		Name: sql.NullString{String: updateNameRequest.Name, Valid: true},
 		Guid: updateNameRequest.GUID,
 	})
 	if err != nil {
-		http.Error(w, "Failed to list agents", http.StatusInternalServerError)
+		http.Error(w, "Failed to update agent name", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(true)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(true); err != nil {
+		api.logf("failed to encode update-name response: %v", err)
 	}
 }
 
-func (api API) SaveAlertConfig(w http.ResponseWriter, r *http.Request) {
+func (api *API) SaveAlertConfig(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req shared.UpdateAlertConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
+	}
+
+	if req.CPUThreshold < 0 || req.CPUThreshold > 100 {
+		http.Error(w, "cpu_threshold must be 0-100", http.StatusBadRequest)
+		return
+	}
+	if req.MemThreshold < 0 || req.MemThreshold > 100 {
+		http.Error(w, "mem_threshold must be 0-100", http.StatusBadRequest)
+		return
+	}
+	if req.DiskThreshold < 0 || req.DiskThreshold > 100 {
+		http.Error(w, "disk_threshold must be 0-100", http.StatusBadRequest)
+		return
+	}
+	if req.OfflineThreshold < 0 {
+		http.Error(w, "offline_threshold must be >= 0", http.StatusBadRequest)
+		return
+	}
+	if req.ToleranceMinutes < 0 {
+		http.Error(w, "tolerance_minutes must be >= 0", http.StatusBadRequest)
+		return
+	}
+	if req.WebhookURL != "" {
+		if err := alert.ValidateWebhookURL(req.WebhookURL); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	_, err := api.db.UpsertAlertConfig(r.Context(), db.UpsertAlertConfigParams{
@@ -246,14 +296,12 @@ func (api API) SaveAlertConfig(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(true)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(true); err != nil {
+		api.logf("failed to encode save-alert response: %v", err)
 	}
 }
 
-func (api API) GetAlertConfig(w http.ResponseWriter, r *http.Request) {
+func (api *API) GetAlertConfig(w http.ResponseWriter, r *http.Request) {
 	config, err := api.db.GetAlertConfig(r.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -274,16 +322,14 @@ func (api API) GetAlertConfig(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(shared.GetAlertConfigResponse{
+	if err = json.NewEncoder(w).Encode(shared.GetAlertConfigResponse{
 		CPUThreshold:     config.CpuThreshold.Int64,
 		MemThreshold:     config.MemThreshold.Int64,
 		DiskThreshold:    config.DiskThreshold.Int64,
 		OfflineThreshold: config.OfflineMins.Int64,
 		ToleranceMinutes: config.ToleranceMins.Int64,
 		WebhookURL:       config.WebhookUrl.String,
-	})
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	}); err != nil {
+		api.logf("failed to encode alert config response: %v", err)
 	}
 }

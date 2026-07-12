@@ -9,76 +9,110 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-var processCache = make(map[int32]*process.Process)
+const topProcessCount = 10
 
-func readTopProcesses() []shared.Process {
+type processCollector struct {
+	cache    map[int32]*process.Process
+	lastCPU  map[int32]float64
+	lastTime time.Time
+}
+
+func newProcessCollector() *processCollector {
+	return &processCollector{
+		cache:   make(map[int32]*process.Process),
+		lastCPU: make(map[int32]float64),
+	}
+}
+
+func (pc *processCollector) readTopProcesses() []shared.Process {
 	procs, err := process.Processes()
 	if err != nil {
 		return nil
 	}
 
-	var processList []shared.Process
-	now := time.Now().UnixMilli()
+	now := time.Now()
+	currentPids := make(map[int32]bool, len(procs))
 
-	currentPids := make(map[int32]bool)
+	type procEntry struct {
+		proc *process.Process
+		cpu  float64
+	}
 
+	entries := make([]procEntry, 0, len(procs))
 	for _, p := range procs {
 		currentPids[p.Pid] = true
 
-		cachedProc, exists := processCache[p.Pid]
+		cached, exists := pc.cache[p.Pid]
 		if !exists {
-			cachedProc = p
-			processCache[p.Pid] = cachedProc
+			cached = p
+			pc.cache[p.Pid] = cached
 		}
 
-		cpu, err := cachedProc.Percent(0)
+		times, err := cached.Times()
 		if err != nil {
 			continue
 		}
 
-		mem, err := cachedProc.MemoryPercent()
-		if err != nil {
-			continue
-		}
+		totalCPU := times.User + times.System
+		elapsed := now.Sub(pc.lastTime).Seconds()
 
-		memInfo, err := cachedProc.MemoryInfo()
+		var cpuPct float64
+		if elapsed > 0 {
+			prev := pc.lastCPU[p.Pid]
+			cpuPct = (totalCPU - prev) / elapsed * 100
+		}
+		pc.lastCPU[p.Pid] = totalCPU
+
+		entries = append(entries, procEntry{proc: cached, cpu: cpuPct})
+	}
+
+	pc.lastTime = now
+
+	for pid := range pc.cache {
+		if !currentPids[pid] {
+			delete(pc.cache, pid)
+			delete(pc.lastCPU, pid)
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].cpu > entries[j].cpu
+	})
+	if len(entries) > topProcessCount {
+		entries = entries[:topProcessCount]
+	}
+
+	now64 := now.UnixMilli()
+	result := make([]shared.Process, 0, len(entries))
+	for _, e := range entries {
+		p := e.proc
+
 		var rss uint64
-		if err == nil {
+		if memInfo, err := p.MemoryInfo(); err == nil {
 			rss = memInfo.RSS
 		}
 
-		name, _ := cachedProc.Name()
-		user, _ := cachedProc.Username()
-		createTime, _ := cachedProc.CreateTime()
-		cmdline, _ := cachedProc.Cmdline()
+		var memPct float32
+		if m, err := p.MemoryPercent(); err == nil {
+			memPct = m
+		}
 
-		uptimeSeconds := int((now - createTime) / 1000)
+		name, _ := p.Name()
+		user, _ := p.Username()
+		createTime, _ := p.CreateTime()
+		cmdline, _ := p.Cmdline()
 
-		processList = append(processList, shared.Process{
-			PID:     int(cachedProc.Pid),
+		result = append(result, shared.Process{
+			PID:     int(p.Pid),
 			User:    user,
-			CPU:     cpu,
-			Memory:  float64(mem),
+			CPU:     e.cpu,
+			Memory:  float64(memPct),
 			RSS:     rss,
-			Uptime:  uptimeSeconds,
+			Uptime:  int((now64 - createTime) / 1000),
 			Name:    name,
 			Cmdline: cmdline,
 		})
 	}
 
-	for pid := range processCache {
-		if !currentPids[pid] {
-			delete(processCache, pid)
-		}
-	}
-
-	sort.Slice(processList, func(i, j int) bool {
-		return processList[i].CPU > processList[j].CPU
-	})
-
-	if len(processList) > 10 {
-		processList = processList[:10]
-	}
-
-	return processList
+	return result
 }

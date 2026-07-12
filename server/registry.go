@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"log"
 	"maps"
 	"sync"
+	"time"
 
 	"homelens/shared"
 
@@ -24,8 +26,6 @@ func NewAgentRegistry() *AgentRegistry {
 		agents:          make(map[string]*websocket.Conn),
 		latestSnapshots: make(map[string]shared.SnapshotEvent),
 		subsConnections: make([]*websocket.Conn, 0),
-		mutex:           sync.RWMutex{},
-		subsMutex:       sync.RWMutex{},
 	}
 }
 
@@ -39,13 +39,6 @@ func (ar *AgentRegistry) Remove(machineID string) {
 	ar.mutex.Lock()
 	delete(ar.agents, machineID)
 	ar.mutex.Unlock()
-}
-
-func (ar *AgentRegistry) Get(machineID string) (*websocket.Conn, bool) {
-	ar.mutex.RLock()
-	conn, exists := ar.agents[machineID]
-	ar.mutex.RUnlock()
-	return conn, exists
 }
 
 func (ar *AgentRegistry) IsOnline(machineID string) bool {
@@ -72,13 +65,33 @@ func (ar *AgentRegistry) Unsubscribe(conn *websocket.Conn) {
 	ar.subsMutex.Unlock()
 }
 
+// Broadcast sends event to all subscribed frontend connections.
+// It takes a snapshot of subscribers under the lock then releases it before
+// writing, so individual slow/dead subscribers don't hold the lock.
+// Dead connections are cleaned up after the write loop.
 func (ar *AgentRegistry) Broadcast(event shared.BroadcastMessage) error {
-	for _, conn := range ar.subsConnections {
-		err := wsjson.Write(context.Background(), conn, event)
+	ar.subsMutex.RLock()
+	subs := make([]*websocket.Conn, len(ar.subsConnections))
+	copy(subs, ar.subsConnections)
+	ar.subsMutex.RUnlock()
+
+	var dead []*websocket.Conn
+	for _, conn := range subs {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := wsjson.Write(ctx, conn, event)
+		cancel()
 		if err != nil {
-			return err
+			log.Printf("broadcast write failed, dropping subscriber: %v", err)
+			_ = conn.CloseNow()
+			dead = append(dead, conn)
 		}
 	}
+
+	// Remove dead connections after releasing the read lock.
+	for _, conn := range dead {
+		ar.Unsubscribe(conn)
+	}
+
 	return nil
 }
 

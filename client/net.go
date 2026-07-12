@@ -11,9 +11,9 @@ import (
 )
 
 type NetInfo struct {
-	Name    string `json:"name"`
-	RxBytes uint64 `json:"rx_bytes"`
-	TxBytes uint64 `json:"tx_bytes"`
+	Name    string
+	RxBytes uint64
+	TxBytes uint64
 }
 
 func readNetInfo() ([]NetInfo, error) {
@@ -54,11 +54,21 @@ func readNetInfo() ([]NetInfo, error) {
 
 func calcNetUsage(prev, curr []NetInfo, interval time.Duration) []shared.Network {
 	secs := interval.Seconds()
+	if secs == 0 {
+		return nil
+	}
+
+	prevByName := make(map[string]NetInfo, len(prev))
+	for _, p := range prev {
+		prevByName[p.Name] = p
+	}
 
 	var netUsages []shared.Network
-
-	for i, c := range curr {
-		p := prev[i]
+	for _, c := range curr {
+		p, ok := prevByName[c.Name]
+		if !ok {
+			continue
+		}
 
 		netUsages = append(netUsages, shared.Network{
 			Name:  c.Name,

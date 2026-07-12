@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"homelens/server/db"
@@ -38,11 +39,11 @@ func NewAgentServer(logf func(f string, v ...any), token string, registry *Agent
 	}
 }
 
-func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+func (as *AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
-	if token != as.token {
-		as.logf("%s : %s", token, as.token)
+	if token == "" || token != as.token {
+		as.logf("unauthorized agent connection attempt from %s", r.RemoteAddr)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -64,24 +65,49 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	as.registry.Add(machineID, c)
 	defer as.registry.Remove(machineID)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*24)
+	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	agentGUID := uuid.New().String()
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+				if err := c.Ping(pingCtx); err != nil {
+					as.logf("agent %s ping failed: %v", machineID, err)
+					pingCancel()
+					cancel()
+					return
+				}
+				pingCancel()
+			}
+		}
+	}()
 
-	agentConnected := true
+	agent, err := as.db.UpsertAgent(r.Context(), db.UpsertAgentParams{
+		Guid:      uuid.New().String(),
+		MachineID: machineID,
+		LastSeen:  time.Now(),
+	})
+	if err != nil {
+		as.logf("failed to upsert agent in database: %v", err)
+		return
+	}
+	agentGUID := agent.Guid
 
 	for {
-
 		var snapshot shared.SystemInfo
 		err := wsjson.Read(ctx, c, &snapshot)
 		if err != nil {
 			if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
-				as.logf("agent disconnected")
+				as.logf("agent disconnected: %s", machineID)
 			} else {
-				as.logf("agent connection lost: %v", err)
+				as.logf("agent %s connection lost: %v", machineID, err)
 			}
-			agentConnected = false
 			break
 		}
 
@@ -91,13 +117,12 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		snapshot.AgentIP = ip
 
-		agent, err := as.db.UpsertAgent(context.Background(), db.UpsertAgentParams{
+		if _, err := as.db.UpsertAgent(r.Context(), db.UpsertAgentParams{
 			Guid:      agentGUID,
 			MachineID: machineID,
 			LastSeen:  time.Now(),
-		})
-		if err != nil {
-			as.logf("failed to upsert agent in database: %v", err)
+		}); err != nil {
+			as.logf("failed to update agent last_seen: %v", err)
 		}
 
 		event := shared.SnapshotEvent{
@@ -117,52 +142,36 @@ func (as AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		agentGUID = agent.Guid
-
-		dbSnapshot := db.InsertSnapshotParams{
+		dbCtx, dbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		dbErr := as.db.InsertSnapshot(dbCtx, db.InsertSnapshotParams{
 			AgentGuid: agentGUID,
 			Timestamp: time.Now(),
 			Data:      string(data),
-		}
-
-		dbErr := as.db.InsertSnapshot(ctx, dbSnapshot)
+		})
+		dbCancel()
 
 		if dbErr != nil {
 			as.logf("failed to insert snapshot into database: %v", dbErr)
 			continue
 		}
 
-		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
+		if err := as.registry.Broadcast(shared.BroadcastMessage{
 			Type:    shared.SnapshotType,
 			Payload: event,
-		})
-
-		if broadcastErr != nil {
-			as.logf("failed to broadcast agent %s data: %v", machineID, broadcastErr)
+		}); err != nil {
+			as.logf("failed to broadcast agent %s data: %v", machineID, err)
 		}
-
 	}
 
-	if !agentConnected {
+	as.alertCleaner.ClearAlertsForAgent(machineID)
 
-		as.alertCleaner.ClearAlertsForAgent(machineID)
-
-		broadcastErr := as.registry.Broadcast(shared.BroadcastMessage{
-			Type: shared.StatusChangeType,
-			Payload: shared.StatusChangeEvent{
-				AgentGUID: agentGUID,
-				Online:    false,
-			},
-		})
-
-		if broadcastErr != nil {
-			as.logf("failed to broadcast agent %s data: %v", machineID, broadcastErr)
-		}
-
-		return
-	}
-
-	if err := c.Close(websocket.StatusNormalClosure, ""); err != nil {
-		as.logf("error closing agent %s websocket cleanly: %v", machineID, err)
+	if err := as.registry.Broadcast(shared.BroadcastMessage{
+		Type: shared.StatusChangeType,
+		Payload: shared.StatusChangeEvent{
+			AgentGUID: agentGUID,
+			Online:    false,
+		},
+	}); err != nil {
+		as.logf("failed to broadcast agent %s disconnect: %v", machineID, err)
 	}
 }
