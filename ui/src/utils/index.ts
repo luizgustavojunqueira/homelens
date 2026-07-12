@@ -14,7 +14,10 @@ export function formatByteStr(
   const factor = Math.pow(1024, metricIndex);
   const valueInBytes = value * factor;
 
-  const newMetricIndex = Math.floor(Math.log(valueInBytes) / Math.log(1024));
+  const newMetricIndex = Math.min(
+    Math.max(0, Math.floor(Math.log(valueInBytes) / Math.log(1024))),
+    metrics.length - 1
+  );
   const newValue = valueInBytes / Math.pow(1024, newMetricIndex);
 
   return `${newValue.toFixed(2)} ${metrics[newMetricIndex]}`;

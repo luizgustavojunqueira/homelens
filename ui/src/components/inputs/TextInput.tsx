@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   Controller,
   type Control,
@@ -26,6 +26,12 @@ export default function TextInput<T extends FieldValues>({
   ...rest
 }: InputProps<T>) {
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return (
     <Controller
