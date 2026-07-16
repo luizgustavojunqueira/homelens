@@ -3,11 +3,8 @@ import { AgentCard } from "./components/agentCard";
 import { useMemo } from "react";
 
 export function Dashboard() {
-  // Subscribe only to the keys so Dashboard doesn't re-render on every agent update
-  const agentGuids = useAgents((state) => Object.keys(state.agents));
-  
-  // To show online count without passing down data, we can just fetch it inside
   const agents = useAgents((state) => state.agents);
+  const agentGuids = Object.keys(agents);
   const onlineCount = useMemo(() => Object.values(agents).filter((a) => a.online).length, [agents]);
 
   return (

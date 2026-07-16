@@ -29,11 +29,11 @@ export interface StatusChangeEvent {
 }
 export interface BroadcastMessage {
   type: EventType;
-  payload: unknown;
+  payload: any;
 }
 export interface SnapshotEntryRaw {
   timestamp: number /* int64 */;
-  data: unknown /* json.RawMessage */;
+  data: any /* json.RawMessage */;
 }
 export interface GetSnapshotsResponse {
   snapshots: SnapshotEntryRaw[];
