@@ -66,6 +66,16 @@ func (ac *AgentClient) Connect() error {
 	}
 
 	ac.conn = c
+	
+	go func(conn *websocket.Conn) {
+		for {
+			_, _, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+		}
+	}(c)
+
 	return nil
 }
 
