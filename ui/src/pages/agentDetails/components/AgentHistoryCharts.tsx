@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import Line from "../../../components/charts/line";
 import type { SnapshotEntry } from "../../../api/models";
 import { getMultiSeries, getSeries } from "../agentDetailsUtils";
-import { convertByteToMetric, formatByteStr } from "../../../utils";
+import { convertByteToMetric } from "../../../utils";
 
 export default function AgentHistoryCharts({ history }: { history: SnapshotEntry[] }) {
   const timestamps = useMemo(() => history.map((snap) => snap.timestamp), [history]);
