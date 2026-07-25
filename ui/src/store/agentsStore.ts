@@ -58,12 +58,13 @@ export const useAgents = create<AgentsStore>((set) => ({
       }
 
       const updatedHistory = [...agentState.history, snapshot].slice(-MAX_HISTORY);
+      const updatedName = name && name.trim() !== "" ? name : agentState.name;
       return {
         agents: {
           ...state.agents,
           [guid]: {
             ...agentState,
-            name: name,
+            name: updatedName,
             online: true,
             last_seen: String(snapshot.timestamp),
             latest_snapshot: snapshot,

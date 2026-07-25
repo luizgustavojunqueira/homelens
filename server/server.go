@@ -117,12 +117,14 @@ func (as *AgentServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		snapshot.AgentIP = ip
 
-		if _, err := as.db.UpsertAgent(r.Context(), db.UpsertAgentParams{
+		if updatedAgent, err := as.db.UpsertAgent(r.Context(), db.UpsertAgentParams{
 			Guid:      agentGUID,
 			MachineID: machineID,
 			LastSeen:  time.Now(),
 		}); err != nil {
 			as.logf("failed to update agent last_seen: %v", err)
+		} else {
+			agent = updatedAgent
 		}
 
 		event := shared.SnapshotEvent{
