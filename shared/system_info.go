@@ -10,6 +10,15 @@ type SystemInfo struct {
 	Containers  []DockerContainer `json:"containers,omitempty"`
 	AgentIP     string            `json:"agent_ip"`
 	Processes   []Process         `json:"processes"`
+	Host        HostInfo          `json:"host,omitempty"`
+}
+
+type HostInfo struct {
+	Hostname      string `json:"hostname"`
+	OS            string `json:"os"`
+	Platform      string `json:"platform"`
+	KernelVersion string `json:"kernel_version"`
+	Uptime        uint64 `json:"uptime"`
 }
 
 type CPU struct {

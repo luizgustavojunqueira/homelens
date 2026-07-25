@@ -80,6 +80,14 @@ export interface SystemInfo {
   containers?: DockerContainer[];
   agent_ip: string;
   processes: Process[];
+  host?: HostInfo;
+}
+export interface HostInfo {
+  hostname: string;
+  os: string;
+  platform: string;
+  kernel_version: string;
+  uptime: number /* uint64 */;
 }
 export interface CPU {
   name: string;

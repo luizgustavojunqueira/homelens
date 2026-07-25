@@ -96,3 +96,10 @@ func TestAgentClient_ReconnectBackoff(t *testing.T) {
 		t.Errorf("Expected multiple reconnect attempts, got %d", client.reconnectAttempts)
 	}
 }
+
+func TestReadHostInfo(t *testing.T) {
+	info := readHostInfo()
+	if info.OS == "" {
+		t.Errorf("Expected non-empty OS string from readHostInfo()")
+	}
+}

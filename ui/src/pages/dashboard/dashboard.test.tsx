@@ -37,7 +37,14 @@ describe('Dashboard Component', () => {
               disk: { disk_space: { path: '/', total: 100, available: 50, used: 50, usage_percent: 50 }, disk_io_usage: [] },
               network: [],
               agent_ip: '192.168.1.1',
-              processes: []
+              processes: [],
+              host: {
+                hostname: 'test-node',
+                os: 'Linux',
+                platform: 'ubuntu',
+                kernel_version: '6.8.0',
+                uptime: 7200
+              }
             }
           }
         }
@@ -52,5 +59,6 @@ describe('Dashboard Component', () => {
 
     expect(screen.getByText('1/1 online')).toBeInTheDocument();
     expect(screen.getByText('Test Server')).toBeInTheDocument();
+    expect(screen.getByText('Linux (ubuntu)')).toBeInTheDocument();
   });
 });

@@ -39,14 +39,21 @@ export function AgentCard({ guid }: { guid: string }) {
 
   return (
     <div
-      className="w-full grid grid-cols-[minmax(150px,1fr)_repeat(5,1.1fr)_24px] items-center gap-6 px-5 py-0 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer min-h-16 overflow-hidden overflow-x-auto"
+      className="w-full grid grid-cols-[minmax(150px,1fr)_repeat(4,1fr)_minmax(250px,1.4fr)_24px] items-center gap-6 px-5 py-0 text-left hover:bg-(--bg-hover) transition-colors cursor-pointer min-h-16 overflow-hidden overflow-x-auto"
       onClick={() => navigate(`/agents/${guid}`)}
     >
       <div className="flex items-center gap-3 min-w-0">
         <span className={`dot ${online ? "" : "off"}`}></span>
-        <span className="text-base font-medium text-(--text) truncate">
-          {name}
-        </span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-base font-medium text-(--text) truncate">
+            {name || snap?.host?.hostname || "Agent"}
+          </span>
+          {snap?.host?.os && (
+            <span className="text-xs text-(--text-dim) truncate">
+              {snap.host.os} {snap.host.platform ? `(${snap.host.platform})` : ""}
+            </span>
+          )}
+        </div>
       </div>
 
       {snap ? (

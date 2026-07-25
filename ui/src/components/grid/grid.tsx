@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 interface IGrid {
   widths?: string[];
-  columns: string[];
+  columns: (string | ReactNode)[];
   children: ReactNode;
 }
 

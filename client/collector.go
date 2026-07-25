@@ -79,6 +79,8 @@ func Collect(ctx context.Context, interval time.Duration, out chan<- shared.Syst
 
 			sysInfo.Processes = procCollector.readTopProcesses()
 
+			sysInfo.Host = readHostInfo()
+
 			prevCPUTime = currentCPUTime
 			prevDiskIO = currentDiskIO
 			prevNetInfo = currentNetInfo
