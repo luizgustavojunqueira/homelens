@@ -43,8 +43,8 @@ export default function AgentGauges({ latestData }: { latestData: SystemInfo }) 
         <Gauge
           value={currentMemUsage}
           label="RAM Usage"
-          total={formatByteStr(currentMemTotal, "KB")}
-          used={formatByteStr(currentMemUsed, "KB")}
+          total={formatByteStr(currentMemTotal)}
+          used={formatByteStr(currentMemUsed)}
         />
       </div>
 

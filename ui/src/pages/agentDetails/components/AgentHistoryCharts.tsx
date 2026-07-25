@@ -19,7 +19,7 @@ export default function AgentHistoryCharts({ history }: { history: SnapshotEntry
   ), [history]);
 
   const memUsedHistory = useMemo(() => history.map((snap) =>
-    convertByteToMetric(snap.data.memory?.used || 0, "GB", "KB")
+    convertByteToMetric(snap.data.memory?.used || 0, "GB", "B")
   ), [history]);
 
   const diskTotalIoHistory = useMemo(() => getMultiSeries(history, (snap) =>
@@ -81,7 +81,7 @@ export default function AgentHistoryCharts({ history }: { history: SnapshotEntry
 
         <div className="h-80 p-2">
           <Line
-            valueFormatter={(value) => formatByteStr(value, "GB")}
+            valueFormatter={(value) => `${value.toFixed(2)} GB`}
             timestamps={timestamps}
             label="RAM Used (GB)"
             series={[

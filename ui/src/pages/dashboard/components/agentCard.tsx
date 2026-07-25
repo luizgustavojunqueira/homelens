@@ -26,8 +26,8 @@ export function AgentCard({ guid }: { guid: string }) {
     cpuPct = snap.cpu.length > 0
       ? snap.cpu.reduce((cum, curr) => cum + curr.usage_percent, 0) / snap.cpu.length
       : 0;
-    const memUsed = (snap.memory?.used ?? 0) * 1024;
-    const memTotal = (snap.memory?.total ?? 0) * 1024;
+    const memUsed = snap.memory?.used ?? 0;
+    const memTotal = snap.memory?.total ?? 0;
     memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
     diskPct = snap.disk?.disk_space?.usage_percent || 0;
     temp = snap.temperature && snap.temperature.length > 0
@@ -78,8 +78,8 @@ export function AgentCard({ guid }: { guid: string }) {
                   <strong>Detailed MEM Usage</strong>
                 </div>
                 <span>
-                  {formatByteStr(snap.memory?.used ?? 0, "KB")} /{" "}
-                  {formatByteStr(snap.memory?.total ?? 0, "KB")}
+                  {formatByteStr(snap.memory?.used ?? 0)} /{" "}
+                  {formatByteStr(snap.memory?.total ?? 0)}
                 </span>
               </div>
             }
