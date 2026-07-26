@@ -9,7 +9,7 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-const topProcessCount = 10
+const topProcessCount = 50
 
 type processCollector struct {
 	cache    map[int32]*process.Process
