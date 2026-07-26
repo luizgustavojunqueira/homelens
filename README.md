@@ -13,6 +13,14 @@ HomeLens is a lightweight real-time server monitoring tool written in Go and Rea
 
 ---
 
+## Screenshots
+
+![Fleet Overview](docs/screenshots/fleet-overview.png)
+![Agent Details](docs/screenshots/agent-details.png)
+![Docker & Processes](docs/screenshots/docker-and-processes.png)
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -136,7 +144,7 @@ Run unit tests and load tests:
 ./run_tests.sh
 ```
 
-Load tests use `k6` ([`loadtest.js`](file:///home/luizg/Documents/Personal/Projects/homelens/loadtest.js)) to simulate multiple agent WebSocket connections.
+Load tests use `k6` ([`loadtest.js`](loadtest.js)) to simulate multiple agent WebSocket connections.
 
 ---
 
